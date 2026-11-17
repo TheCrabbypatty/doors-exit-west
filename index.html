@@ -74,29 +74,1463 @@
   var W = 640, H = 360;
   var FONT = '"Press Start 2P", monospace';
 
+  /* ================= soundtracks: one per scene ================= */
+  var SONGS = {
+  "city": {
+    "stepDur": 0.22,
+    "leadWave": "square",
+    "bassWave": "triangle",
+    "arpWave": "triangle",
+    "lead": [
+      69,
+      0,
+      72,
+      0,
+      76,
+      0,
+      74,
+      72,
+      71,
+      0,
+      69,
+      0,
+      0,
+      0,
+      0,
+      0,
+      72,
+      0,
+      74,
+      0,
+      76,
+      0,
+      77,
+      76,
+      74,
+      0,
+      72,
+      0,
+      69,
+      0,
+      0,
+      0,
+      74,
+      0,
+      77,
+      0,
+      81,
+      0,
+      79,
+      77,
+      76,
+      0,
+      74,
+      0,
+      72,
+      0,
+      0,
+      0,
+      76,
+      0,
+      74,
+      0,
+      71,
+      0,
+      68,
+      0,
+      69,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "bass": [
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      52,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      57,
+      0,
+      0,
+      0,
+      40,
+      0,
+      0,
+      0,
+      40,
+      0,
+      0,
+      0,
+      40,
+      0,
+      0,
+      0,
+      47,
+      0,
+      0,
+      0
+    ],
+    "arp": [
+      69,
+      72,
+      76,
+      72,
+      69,
+      72,
+      76,
+      72,
+      69,
+      72,
+      76,
+      72,
+      69,
+      72,
+      76,
+      72,
+      65,
+      69,
+      72,
+      69,
+      65,
+      69,
+      72,
+      69,
+      65,
+      69,
+      72,
+      69,
+      65,
+      69,
+      72,
+      69,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      64,
+      68,
+      71,
+      68,
+      64,
+      68,
+      71,
+      68,
+      64,
+      68,
+      71,
+      68,
+      64,
+      68,
+      71,
+      68
+    ],
+    "kick": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+    ],
+    "snare": [
+      4,
+      12,
+      20,
+      28,
+      36,
+      44,
+      52,
+      60
+    ],
+    "hat": [
+      2,
+      6,
+      10,
+      14,
+      18,
+      22,
+      26,
+      30,
+      34,
+      38,
+      42,
+      46,
+      50,
+      54,
+      58,
+      62
+    ]
+  },
+  "fall": {
+    "stepDur": 0.19,
+    "leadWave": "sawtooth",
+    "bassWave": "square",
+    "arpWave": "triangle",
+    "lead": [
+      74,
+      0,
+      77,
+      0,
+      81,
+      0,
+      79,
+      77,
+      76,
+      0,
+      74,
+      0,
+      0,
+      0,
+      0,
+      0,
+      77,
+      0,
+      79,
+      0,
+      81,
+      0,
+      82,
+      81,
+      79,
+      0,
+      77,
+      0,
+      76,
+      0,
+      0,
+      0,
+      79,
+      0,
+      81,
+      0,
+      82,
+      0,
+      81,
+      79,
+      77,
+      0,
+      76,
+      0,
+      74,
+      0,
+      0,
+      0,
+      76,
+      0,
+      73,
+      0,
+      74,
+      0,
+      73,
+      74,
+      76,
+      0,
+      74,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "bass": [
+      50,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      57,
+      0,
+      0,
+      0,
+      46,
+      0,
+      0,
+      0,
+      46,
+      0,
+      0,
+      0,
+      46,
+      0,
+      0,
+      0,
+      53,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      52,
+      0,
+      0,
+      0
+    ],
+    "arp": [
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      58,
+      62,
+      65,
+      62,
+      58,
+      62,
+      65,
+      62,
+      58,
+      62,
+      65,
+      62,
+      58,
+      62,
+      65,
+      62,
+      55,
+      58,
+      62,
+      58,
+      55,
+      58,
+      62,
+      58,
+      55,
+      58,
+      62,
+      58,
+      55,
+      58,
+      62,
+      58,
+      57,
+      61,
+      64,
+      61,
+      57,
+      61,
+      64,
+      61,
+      57,
+      61,
+      64,
+      61,
+      57,
+      61,
+      64,
+      61
+    ],
+    "kick": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      44,
+      48,
+      52,
+      56,
+      60
+    ],
+    "snare": [
+      4,
+      12,
+      20,
+      28,
+      36,
+      44,
+      52,
+      60
+    ],
+    "hat": [
+      2,
+      6,
+      10,
+      14,
+      18,
+      22,
+      26,
+      30,
+      34,
+      38,
+      42,
+      46,
+      50,
+      54,
+      58,
+      62
+    ]
+  },
+  "mykonos": {
+    "stepDur": 0.2,
+    "leadWave": "sine",
+    "bassWave": "triangle",
+    "arpWave": "sine",
+    "lead": [
+      72,
+      0,
+      76,
+      0,
+      79,
+      0,
+      76,
+      74,
+      72,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      69,
+      0,
+      72,
+      0,
+      76,
+      0,
+      74,
+      72,
+      71,
+      0,
+      69,
+      0,
+      0,
+      0,
+      0,
+      0,
+      72,
+      0,
+      74,
+      0,
+      77,
+      0,
+      76,
+      74,
+      72,
+      0,
+      69,
+      0,
+      0,
+      0,
+      0,
+      0,
+      71,
+      0,
+      74,
+      0,
+      79,
+      0,
+      77,
+      76,
+      74,
+      0,
+      72,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "bass": [
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      55,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      52,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0
+    ],
+    "arp": [
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      55,
+      59,
+      62,
+      59,
+      55,
+      59,
+      62,
+      59,
+      55,
+      59,
+      62,
+      59,
+      55,
+      59,
+      62,
+      59
+    ],
+    "kick": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+    ],
+    "snare": [
+      4,
+      12,
+      20,
+      28,
+      36,
+      44,
+      52,
+      60
+    ],
+    "hat": [
+      2,
+      10,
+      18,
+      26,
+      34,
+      42,
+      50,
+      58
+    ]
+  },
+  "london": {
+    "stepDur": 0.17,
+    "leadWave": "sawtooth",
+    "bassWave": "square",
+    "arpWave": "triangle",
+    "lead": [
+      74,
+      0,
+      77,
+      0,
+      81,
+      0,
+      79,
+      77,
+      76,
+      0,
+      77,
+      0,
+      74,
+      0,
+      0,
+      0,
+      77,
+      0,
+      79,
+      0,
+      81,
+      0,
+      82,
+      81,
+      79,
+      0,
+      77,
+      0,
+      74,
+      0,
+      0,
+      0,
+      81,
+      0,
+      77,
+      0,
+      76,
+      0,
+      74,
+      76,
+      77,
+      0,
+      79,
+      0,
+      81,
+      0,
+      0,
+      0,
+      79,
+      0,
+      76,
+      0,
+      77,
+      0,
+      76,
+      74,
+      72,
+      0,
+      74,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "bass": [
+      50,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      46,
+      0,
+      0,
+      0,
+      46,
+      0,
+      0,
+      0,
+      46,
+      0,
+      0,
+      0,
+      53,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      55,
+      0,
+      0,
+      0
+    ],
+    "arp": [
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      62,
+      65,
+      69,
+      65,
+      58,
+      62,
+      65,
+      62,
+      58,
+      62,
+      65,
+      62,
+      58,
+      62,
+      65,
+      62,
+      58,
+      62,
+      65,
+      62,
+      65,
+      69,
+      72,
+      69,
+      65,
+      69,
+      72,
+      69,
+      65,
+      69,
+      72,
+      69,
+      65,
+      69,
+      72,
+      69,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64
+    ],
+    "kick": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      44,
+      48,
+      52,
+      56,
+      60
+    ],
+    "snare": [
+      4,
+      12,
+      20,
+      28,
+      36,
+      44,
+      52,
+      60
+    ],
+    "hat": [
+      2,
+      6,
+      10,
+      14,
+      18,
+      22,
+      26,
+      30,
+      34,
+      38,
+      42,
+      46,
+      50,
+      54,
+      58,
+      62
+    ]
+  },
+  "march": {
+    "stepDur": 0.16,
+    "leadWave": "square",
+    "bassWave": "sawtooth",
+    "arpWave": "square",
+    "lead": [
+      69,
+      69,
+      72,
+      0,
+      76,
+      0,
+      74,
+      72,
+      71,
+      0,
+      72,
+      0,
+      69,
+      0,
+      0,
+      0,
+      69,
+      0,
+      72,
+      0,
+      74,
+      0,
+      76,
+      0,
+      76,
+      0,
+      74,
+      72,
+      71,
+      0,
+      0,
+      0,
+      72,
+      0,
+      77,
+      0,
+      81,
+      0,
+      79,
+      77,
+      76,
+      0,
+      74,
+      0,
+      72,
+      0,
+      0,
+      0,
+      71,
+      0,
+      76,
+      0,
+      80,
+      0,
+      76,
+      71,
+      69,
+      0,
+      71,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "bass": [
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      52,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      52,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      40,
+      0,
+      0,
+      0,
+      40,
+      0,
+      0,
+      0,
+      40,
+      0,
+      0,
+      0,
+      47,
+      0,
+      0,
+      0
+    ],
+    "arp": [
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      52,
+      56,
+      59,
+      56,
+      52,
+      56,
+      59,
+      56,
+      52,
+      56,
+      59,
+      56,
+      52,
+      56,
+      59,
+      56
+    ],
+    "kick": [
+      0,
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      44,
+      48,
+      52,
+      56,
+      60
+    ],
+    "snare": [
+      4,
+      12,
+      20,
+      28,
+      36,
+      44,
+      52,
+      60
+    ],
+    "hat": [
+      2,
+      6,
+      10,
+      14,
+      18,
+      22,
+      26,
+      30,
+      34,
+      38,
+      42,
+      46,
+      50,
+      54,
+      58,
+      62
+    ]
+  },
+  "marin": {
+    "stepDur": 0.24,
+    "leadWave": "sine",
+    "bassWave": "triangle",
+    "arpWave": "sine",
+    "lead": [
+      76,
+      0,
+      74,
+      0,
+      72,
+      0,
+      76,
+      0,
+      79,
+      0,
+      76,
+      74,
+      72,
+      0,
+      0,
+      0,
+      74,
+      0,
+      71,
+      0,
+      67,
+      0,
+      71,
+      0,
+      74,
+      0,
+      79,
+      0,
+      76,
+      0,
+      74,
+      0,
+      76,
+      0,
+      72,
+      0,
+      69,
+      0,
+      72,
+      0,
+      76,
+      0,
+      81,
+      0,
+      79,
+      0,
+      76,
+      0,
+      77,
+      0,
+      81,
+      0,
+      79,
+      0,
+      77,
+      0,
+      76,
+      0,
+      74,
+      0,
+      72,
+      0,
+      0,
+      0
+    ],
+    "bass": [
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0,
+      55,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      43,
+      0,
+      0,
+      0,
+      50,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      45,
+      0,
+      0,
+      0,
+      52,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      41,
+      0,
+      0,
+      0,
+      48,
+      0,
+      0,
+      0
+    ],
+    "arp": [
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      60,
+      64,
+      67,
+      64,
+      55,
+      59,
+      62,
+      59,
+      55,
+      59,
+      62,
+      59,
+      55,
+      59,
+      62,
+      59,
+      55,
+      59,
+      62,
+      59,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      57,
+      60,
+      64,
+      60,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57,
+      53,
+      57,
+      60,
+      57
+    ],
+    "kick": [
+      0,
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+    ],
+    "snare": [],
+    "hat": [
+      4,
+      20,
+      36,
+      52
+    ]
+  }
+};
+
   /* ================= AUDIO: a composed chiptune ================= */
   // 64-step loop, Am - F - C - G. Lead, bass, arpeggio, drums.
   var AudioSys = {
     ctx: null, muted: false, musicTimer: null, step: 0,
-    stepDur: 0.20, leadWave: 'square', noiseBuf: null,
-    lead: [
-      69,0,72,0, 76,0,74,72, 71,0,72,0, 69,0,0,0,
-      72,0,74,0, 76,0,77,76, 74,0,72,0, 71,0,0,0,
-      72,0,76,0, 79,0,76,74, 72,0,74,0, 76,0,0,0,
-      74,0,71,0, 72,0,71,69, 67,0,69,0, 0,0,0,0
-    ],
-    bass: [
-      45,0,0,0, 45,0,0,0, 45,0,0,0, 52,0,0,0,
-      41,0,0,0, 41,0,0,0, 41,0,0,0, 48,0,0,0,
-      48,0,0,0, 48,0,0,0, 48,0,0,0, 55,0,0,0,
-      43,0,0,0, 43,0,0,0, 43,0,0,0, 50,0,0,0
-    ],
-    arp: [
-      69,72,76,72, 69,72,76,72, 69,72,76,72, 69,72,76,72,
-      65,69,72,69, 65,69,72,69, 65,69,72,69, 65,69,72,69,
-      67,72,76,72, 67,72,76,72, 67,72,76,72, 67,72,76,72,
-      67,71,74,71, 67,71,74,71, 67,71,74,71, 67,71,74,71
-    ],
+    songName: 'city', noiseBuf: null,
+    song: function () { return SONGS[this.songName] || SONGS.city; },
     init: function () {
       if (!this.ctx) {
         try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; }
@@ -152,25 +1586,25 @@
     startMusic: function () {
       if (this.musicTimer || !this.ctx) return;
       var self = this;
+      var sg = this.song();
       this.musicTimer = setInterval(function () {
         if (self.muted) { self.step++; return; }
+        var sg2 = self.song();
         var i = self.step % 64;
-        var ln = self.lead[i], bn = self.bass[i], an = self.arp[i];
-        if (ln) self.tone(self.freq(ln), self.stepDur * 0.95, self.leadWave, 0.032);
-        if (bn) self.tone(self.freq(bn), self.stepDur * 1.8, 'triangle', 0.055);
-        if (an) self.tone(self.freq(an), self.stepDur * 0.5, 'triangle', 0.018);
-        if (i % 16 === 0 || i % 16 === 8) self.kick();
-        if (i % 16 === 4 || i % 16 === 12) self.noise(0.09, 0.05, 1800);
-        if (i % 4 === 2) self.noise(0.03, 0.02, 8000);
+        var ln = sg2.lead[i], bn = sg2.bass[i], an = sg2.arp[i];
+        if (ln) self.tone(self.freq(ln), sg2.stepDur * 0.95, sg2.leadWave, 0.032);
+        if (bn) self.tone(self.freq(bn), sg2.stepDur * 1.8, sg2.bassWave, 0.055);
+        if (an) self.tone(self.freq(an), sg2.stepDur * 0.5, sg2.arpWave, 0.018);
+        if (sg2.kick.indexOf(i) !== -1) self.kick();
+        if (sg2.snare.indexOf(i) !== -1) self.noise(0.09, 0.05, 1800);
+        if (sg2.hat.indexOf(i) !== -1) self.noise(0.03, 0.02, 8000);
         self.step++;
-      }, this.stepDur * 1000);
+      }, sg.stepDur * 1000);
     },
     stopMusic: function () { if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; } },
-    setMood: function (mood) {
-      if (mood === 'london' || mood === 'march') { this.stepDur = 0.165; this.leadWave = 'square'; }
-      else if (mood === 'marin') { this.stepDur = 0.24; this.leadWave = 'sine'; }
-      else if (mood === 'city') { this.stepDur = 0.22; this.leadWave = 'square'; }
-      else { this.stepDur = 0.20; this.leadWave = 'square'; }
+    setSong: function (name) {
+      if (!SONGS[name]) name = 'city';
+      this.songName = name;
       if (this.musicTimer) { this.stopMusic(); this.startMusic(); }
     },
     setMuted: function (m) {
@@ -921,6 +2355,20 @@
   }
 };
   /*__SPRITES_OBJECTS__*/
+  // Pixel heart for the HUD (8x7, drawn at 2x = 16x14).
+  SPRITES.heart = {
+    w: 8, h: 7,
+    palette: { H: '#e74c3c', h: '#c0392b', W: '#ff8a80' },
+    frames: [[
+      ".HH..HH.",
+      "HWHHHHHH",
+      "HHHHHHHH",
+      "HHHHHHHh",
+      ".HHHHHh.",
+      "..HHHh..",
+      "...Hh..."
+    ]]
+  };
   function drawSprite(name, frame, x, y, flip) {
     var s = SPRITES[name];
     if (!s) return;
@@ -1037,7 +2485,7 @@
   }
 
   /* ================= game state ================= */
-  var state = 'title'; // title | play | talk | choice | transition | ending | gameover
+  var state = 'title'; // title | intro | play | talk | choice | transition | ending | gameover
   var sceneIndex = 0;
   var hope = 3, maxHope = 3;
   var stamina = 100, staminaLock = false;
@@ -1056,6 +2504,7 @@
   var nearTarget = null; // {type, ref, label}
   var msg = null; // {text, t}
   var memCount = 0;
+  var introT = 0;
 
   function has(item) { return inventory.indexOf(item) !== -1; }
   function take(item) { if (!has(item)) inventory.push(item); }
@@ -1078,8 +2527,9 @@
       particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 90, vy: -Math.random() * 70 - 10, life: 0.6 + Math.random() * 0.3, color: color, size: 2 + Math.random() * 2 });
     }
   }
+  var dialogSpeaker = '';
   function startDialogue(lines, onDone) {
-    dialog = { lines: lines, idx: 0, onDone: onDone || null };
+    dialog = { lines: lines, idx: 0, onDone: onDone || null, speaker: dialogSpeaker };
     state = 'talk';
     AudioSys.sfx('talk');
   }
@@ -1120,8 +2570,14 @@
     player.inv = 0;
     s.patrols.forEach(function (p) { p.x = p.wps[0].x; p.y = p.wps[0].y; p.wp = 0; p.mode = 'patrol'; });
     if (s.marchers) s.marchers.forEach(function (m) { m.x = m.startX; });
-    AudioSys.setMood(s.mood);
+    AudioSys.setSong(s.mood);
     updateObjectiveLabel();
+    if (i === 2) {
+      // the crossing to Mykonos takes your food and water; you arrive with nothing
+      ['food', 'water'].forEach(function (it) { var ix = inventory.indexOf(it); if (ix !== -1) inventory.splice(ix, 1); });
+    }
+    introT = 2.4;
+    state = 'intro';
   }
   function startTransition(news, to) {
     transition = { news: news, to: to, t: 0 };
@@ -1143,7 +2599,7 @@
     sceneIndex = 0; step = 0;
     player.x = SCENES[0].start.x; player.y = SCENES[0].start.y; player.inv = 0;
     state = 'title';
-    AudioSys.setMood('city');
+    AudioSys.setSong('city');
     updateObjectiveLabel();
   }
 
@@ -1179,6 +2635,24 @@
         { id: 'neighbor', x: 90, y: 280, sprite: 'local', name: 'NEIGHBOR', done: false,
           interact: function () {
             startDialogue(["You're still going to the class? ... Listen. The shooting was on our street last night. Two blocks over.", "They say there's a door, down by the old market. People walk through it and they're just... gone. Somewhere else. I don't know if it's real. But my cousin's gone, so. Maybe it is."]);
+          } },
+        { id: 'oldman', x: 300, y: 250, sprite: 'worker', name: 'AN OLD MAN', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["Thank you, son. My legs aren't what they were. Go on. The class is starting."]); return; }
+            var self = this;
+            startDialogue(["My bag's too heavy. These old legs. ... Could you carry it to the corner for me? Just to the corner."], function () {
+              showChoice('CARRY HIS BAG?', [
+                { label: 'CARRY IT', onPick: function () {
+                  belonging = clamp(belonging + 10, 0, 100); gainHope(1); self.done = true;
+                  AudioSys.sfx('hope'); burst(300, 250, '#ffd76a', 10);
+                  startDialogue(["Thank you. You're a good boy. Be careful out there tonight."]);
+                } },
+                { label: 'KEEP MOVING', onPick: function () {
+                  belonging = clamp(belonging - 5, 0, 100);
+                  startDialogue(["I understand. Everyone's in a hurry these days."]);
+                } }
+              ]);
+            });
           } }
       ],
       items: [],
@@ -1187,13 +2661,67 @@
         { id: 'm2', x: 520, y: 280, taken: false, text: 'The walk home. Nadia said, if anyone stops us, let me do the talking. She said it like she\'d done it before. She had.' }
       ],
       patrols: [
-        P(420, 150, [{ x: 420, y: 150 }, { x: 420, y: 230 }], { speed: 0.7, detect: 50, chase: 1.2 }, 'soldier'),
-        P(480, 150, [{ x: 480, y: 150 }, { x: 540, y: 150 }, { x: 540, y: 260 }, { x: 480, y: 260 }], { speed: 0.9, detect: 50, chase: 1.2 }, 'soldier')
+        P(420, 150, [{ x: 420, y: 150 }, { x: 420, y: 230 }], { speed: 0.8, detect: 55, chase: 1.25 }, 'soldier'),
+        P(480, 150, [{ x: 480, y: 150 }, { x: 540, y: 150 }, { x: 540, y: 260 }, { x: 480, y: 260 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier'),
+        P(300, 100, [{ x: 300, y: 100 }, { x: 500, y: 100 }], { speed: 0.9, detect: 55, chase: 1.25 }, 'soldier')
       ],
       rests: [{ x: 70, y: 200, used: false, label: 'REST ON THE STOOP' }]
     },
     {
-      name: 'MYKONOS — A CAMP', mood: 'camp',
+      name: 'THE CITY — THE FALL', mood: 'fall',
+      sky: ['#0d0d1a', '#1a1a2a'], ground: 'street',
+      intro: 'The city. Night. The power is out. The soldiers are everywhere. Nadia says: we have to go. Tonight.',
+      start: { x: 50, y: 300 },
+      objectives: ['FIND FOOD AND WATER.', 'GET PAST THE CURFEW.', 'REACH THE DOOR.'],
+      walls: [
+        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
+        { x: 140, y: 40, w: 100, h: 60 }, // ruined building
+        { x: 460, y: 260, w: 120, h: 50 }, // barricade
+        { x: 320, y: 60, w: 10, h: 100 }, // curfew wall, upper
+        { x: 320, y: 220, w: 10, h: 110 }  // curfew wall, lower (gap y 160-220)
+      ],
+      doors: [{ x: 590, y: 120, w: 36, h: 56, locked: function () { return !(has('food') && has('water')); }, to: 2,
+        news: 'TODAY: IN MANY CITIES, CURFEWS AND CHECKPOINTS DECIDE WHO MAY WALK THE STREETS AFTER DARK.' }],
+      npcs: [
+        { id: 'nadia', x: 200, y: 120, sprite: 'nadia', name: 'NADIA', done: false,
+          interact: function () {
+            startDialogue(["I packed what I could. There's food in the corner shop, and water by the fountain. Grab them. Then we go.", "The curfew starts at midnight. If a soldier sees us after that, we're done. Stay in the shadows."]);
+          } },
+        { id: 'mother', x: 90, y: 280, sprite: 'worker', name: 'A MOTHER', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["Thank you. She's calmer now. Go. Go before they come."]); return; }
+            var self = this;
+            startDialogue(["My daughter's scared of the dark. She won't stop crying. ... Could you walk with us to the corner? Just to the corner. She likes it when someone's there."], function () {
+              showChoice('WALK WITH THEM?', [
+                { label: 'WALK WITH THEM', onPick: function () {
+                  belonging = clamp(belonging + 10, 0, 100); gainHope(1); self.done = true;
+                  AudioSys.sfx('hope'); burst(90, 280, '#ffd76a', 10);
+                  startDialogue(["Thank you. She stopped crying. You're a good person. Go. And be safe."]);
+                } },
+                { label: 'KEEP MOVING', onPick: function () {
+                  belonging = clamp(belonging - 5, 0, 100);
+                  startDialogue(["I understand. Everyone's in a hurry tonight."]);
+                } }
+              ]);
+            });
+          } }
+      ],
+      items: [
+        { id: 'food', x: 200, y: 280, type: 'food', taken: false, onTake: function () { take('food'); showMsg('GOT FOOD.'); if (has('food') && has('water') && step === 0) advanceStep(); } },
+        { id: 'water', x: 280, y: 100, type: 'water', taken: false, onTake: function () { take('water'); showMsg('GOT WATER.'); if (has('food') && has('water') && step === 0) advanceStep(); } }
+      ],
+      memories: [
+        { id: 'm1', x: 300, y: 200, taken: false, text: 'The city at night. No lights. The only sound is the soldiers\' boots, and somewhere, a woman singing to her child so she won\'t be afraid.' }
+      ],
+      patrols: [
+        P(320, 150, [{ x: 320, y: 150 }, { x: 320, y: 230 }], { speed: 0.8, detect: 55, chase: 1.25 }, 'soldier'),
+        P(480, 120, [{ x: 480, y: 120 }, { x: 480, y: 300 }, { x: 560, y: 300 }, { x: 560, y: 120 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier')
+      ],
+      rests: [{ x: 70, y: 200, used: false, label: 'REST IN THE DOORWAY' }]
+    },
+    {
+      name: 'MYKONOS — A CAMP', mood: 'mykonos',
       sky: ['#1a2a4a', '#2a4a6a'], ground: 'sand',
       intro: 'Mykonos. A camp by the sea. Hundreds of people, waiting for a door.',
       start: { x: 50, y: 300 },
@@ -1203,9 +2731,13 @@
         { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
         { x: 200, y: 180, w: 60, h: 40 }, { x: 400, y: 120, w: 60, h: 40 } // tents (blocks)
       ],
-      doors: [{ x: 590, y: 140, w: 36, h: 56, locked: function () { return !(has('blanket') && has('water') && (has('food') || flags.migrantHelped)); }, to: 2,
+      doors: [{ x: 590, y: 140, w: 36, h: 56, locked: function () { return !(has('blanket') && has('water') && (has('food') || flags.migrantHelped)); }, to: 3,
         news: 'TODAY: REFUGEE CAMPS GROW, WHILE WAITS FOR ASYLUM STRETCH INTO YEARS.' }],
       npcs: [
+        { id: 'nadia', x: 350, y: 200, sprite: 'nadia', name: 'NADIA', done: false,
+          interact: function () {
+            startDialogue(["The boats keep coming. And the camp just stays. ... Saeed, when we get to London, I want a door that locks. Just for us. Is that too much to ask?"]);
+          } },
         { id: 'worker', x: 280, y: 260, sprite: 'worker', name: 'CAMP WORKER', done: false,
           interact: function () {
             startDialogue(["Another boat came in this morning. We put them in the tents by the fence. There's no room, but what are we supposed to do, turn them back to the sea?", "You need a blanket, food, water. Take what you need. There's a door, at the end of the camp. When you're ready."]);
@@ -1243,8 +2775,9 @@
         { id: 'm2', x: 540, y: 300, taken: false, text: 'Nobody lives here. We just wait here. Days turn into weeks. Someone\'s always leaving, and someone\'s always arriving, and the camp just stays.' }
       ],
       patrols: [
-        P(150, 240, [{ x: 150, y: 240 }, { x: 500, y: 240 }], { speed: 0.8, detect: 55, chase: 1.15 }, 'guard'),
-        P(350, 120, [{ x: 350, y: 120 }, { x: 350, y: 300 }], { speed: 0.8, detect: 55, chase: 1.15 }, 'guard')
+        P(150, 240, [{ x: 150, y: 240 }, { x: 500, y: 240 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'guard'),
+        P(350, 120, [{ x: 350, y: 120 }, { x: 350, y: 300 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'guard'),
+        P(500, 300, [{ x: 500, y: 300 }, { x: 200, y: 300 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'guard')
       ],
       rests: [{ x: 100, y: 300, used: false, label: 'REST IN THE TENT' }]
     },
@@ -1263,9 +2796,31 @@
         { x: 240, y: 40, w: 10, h: 220 }, // house right wall, upper (gap y 260-310 = back door)
         { x: 240, y: 310, w: 10, h: 10 }
       ],
-      doors: [{ x: 590, y: 150, w: 36, h: 56, locked: function () { return step < 1; }, to: 3,
+      doors: [{ x: 590, y: 150, w: 36, h: 56, locked: function () { return step < 1; }, to: 4,
         news: 'TODAY: IN MANY COUNTRIES, LEADERS PROMISE TO "TAKE BACK" STREETS AND BORDERS FROM NEWCOMERS.' }],
       npcs: [
+        { id: 'nadia', x: 200, y: 250, sprite: 'nadia', name: 'NADIA', done: false,
+          interact: function () {
+            startDialogue(["Twelve people, one bathroom. But it's ours, for now. ... Do you ever think about what we'll do after? When this is over?"]);
+          } },
+        { id: 'child', x: 100, y: 120, sprite: 'migrant', name: 'A CHILD', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["Thank you for staying. I'm not scared anymore."]); return; }
+            var self = this;
+            startDialogue(["I'm scared of the shouting outside. ... Will you stay with me for a bit? Just until it stops?"], function () {
+              showChoice('STAY WITH THE CHILD?', [
+                { label: 'STAY WITH THEM', onPick: function () {
+                  belonging = clamp(belonging + 10, 0, 100); gainHope(1); self.done = true;
+                  AudioSys.sfx('hope'); burst(100, 120, '#ffd76a', 10);
+                  startDialogue(["Thank you. ... It's quieter now. You're nice."]);
+                } },
+                { label: 'KEEP MOVING', onPick: function () {
+                  belonging = clamp(belonging - 5, 0, 100);
+                  startDialogue(["Okay. ... I'll just hide under the blanket."]);
+                } }
+              ]);
+            });
+          } },
         { id: 'housemate', x: 150, y: 180, sprite: 'housemate', name: 'YOUR HOUSEMATE', done: false,
           interact: function () {
             if (this.done) { startDialogue(["Go on. The back door's clear. And thank you."]); return; }
@@ -1314,9 +2869,32 @@
         { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
         { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 }
       ],
-      doors: [{ x: 590, y: 80, w: 36, h: 56, locked: function () { return step < 1; }, to: 4,
+      doors: [{ x: 590, y: 80, w: 36, h: 56, locked: function () { return step < 1; }, to: 5,
         news: 'TODAY: THE SAME WORDS ARE ON THE NEWS, IN EVERY COUNTRY, RIGHT NOW.' }],
-      npcs: [],
+      npcs: [
+        { id: 'nadia', x: 150, y: 280, sprite: 'nadia', name: 'NADIA', done: false,
+          interact: function () {
+            startDialogue(["Stay close. Don't let go of my hand. ... They're shouting again. Just keep walking. Don't look at them."]);
+          } },
+        { id: 'woman', x: 400, y: 200, sprite: 'worker', name: 'A WOMAN', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["Thank you. I'm alright. Go. Before they turn back."]); return; }
+            var self = this;
+            startDialogue(["I fell. The crowd pushed me down. ... Can you help me up? I can't get up on my own."], function () {
+              showChoice('HELP HER UP?', [
+                { label: 'HELP HER UP', onPick: function () {
+                  belonging = clamp(belonging + 10, 0, 100); gainHope(1); self.done = true;
+                  AudioSys.sfx('hope'); burst(400, 200, '#ffd76a', 10);
+                  startDialogue(["Thank you. You didn't have to stop. Most people don't."]);
+                } },
+                { label: 'KEEP MOVING', onPick: function () {
+                  belonging = clamp(belonging - 5, 0, 100);
+                  startDialogue(["I understand. It's every person for themselves out here."]);
+                } }
+              ]);
+            });
+          } }
+      ],
       items: [],
       memories: [
         { id: 'm1', x: 320, y: 200, taken: false, text: 'They march like it\'s a parade. Banners, drums, the whole thing. And the chant is always the same. You learn not to flinch when you hear it. You never really learn.' }
@@ -1325,14 +2903,16 @@
         P(540, 120, [{ x: 540, y: 120 }, { x: 540, y: 200 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'nativist')
       ],
       marchers: [
-        { startX: 100, y: 120, speed: 50, sprite: 'nativist', x: 100 },
-        { startX: 300, y: 120, speed: 60, sprite: 'nativist', x: 300 },
-        { startX: 500, y: 120, speed: 45, sprite: 'nativist', x: 500 },
+        { startX: 100, y: 120, speed: 55, sprite: 'nativist', x: 100 },
+        { startX: 300, y: 120, speed: 65, sprite: 'nativist', x: 300 },
+        { startX: 500, y: 120, speed: 50, sprite: 'nativist', x: 500 },
+        { startX: 200, y: 120, speed: 70, sprite: 'nativist', x: 200 },
+        { startX: 420, y: 200, speed: 60, sprite: 'nativist', x: 420 },
         { startX: 200, y: 200, speed: 55, sprite: 'nativist', x: 200 },
-        { startX: 420, y: 200, speed: 48, sprite: 'nativist', x: 420 },
-        { startX: 80, y: 280, speed: 65, sprite: 'nativist', x: 80 },
-        { startX: 350, y: 280, speed: 52, sprite: 'nativist', x: 350 },
-        { startX: 550, y: 280, speed: 58, sprite: 'nativist', x: 550 }
+        { startX: 550, y: 200, speed: 68, sprite: 'nativist', x: 550 },
+        { startX: 80, y: 280, speed: 70, sprite: 'nativist', x: 80 },
+        { startX: 350, y: 280, speed: 58, sprite: 'nativist', x: 350 },
+        { startX: 550, y: 280, speed: 62, sprite: 'nativist', x: 550 }
       ],
       rests: []
     },
@@ -1348,6 +2928,10 @@
       ],
       doors: [],
       npcs: [
+        { id: 'nadia', x: 200, y: 250, sprite: 'nadia', name: 'NADIA', done: false,
+          interact: function () {
+            startDialogue(["It's quiet here. Too quiet, sometimes. ... Saeed, I think we're going different ways now. Not because we want to. Because we are.", "You found your people here. I found mine. That's not a bad thing. It just is. ... It's alright. It has to be."]);
+          } },
         { id: 'local', x: 300, y: 200, sprite: 'local', name: 'A LOCAL', done: false,
           interact: function () {
             if (this.done) { startDialogue(["It's quiet here. That's the whole point, I think."]); return; }
@@ -1368,7 +2952,7 @@
     }
   ];
   function londonStandDown() {
-    var p = SCENES[2].patrols[0];
+    var p = SCENES[3].patrols[0];
     if (p) { p.wps = [{ x: 300, y: 320 }]; p.wp = 0; p.mode = 'patrol'; p.def.speed = 0.6; }
   }
   function showFinalChoice() {
@@ -1399,11 +2983,13 @@
       else if (step === 1 && flags.nadiaMet) advanceStep();
       else if (step === 2 && player.x > 450) advanceStep();
     } else if (sceneIndex === 1) {
-      if (step === 2 && has('blanket') && has('water') && (has('food') || flags.migrantHelped)) advanceStep();
+      if (step === 1 && player.x > 350) advanceStep();
     } else if (sceneIndex === 2) {
+      if (step === 2 && has('blanket') && has('water') && (has('food') || flags.migrantHelped)) advanceStep();
+    } else if (sceneIndex === 3) {
       if (step === 0 && flags.housemateMet) advanceStep();
       else if (step === 1 && flags.housemateDone) advanceStep();
-    } else if (sceneIndex === 3) {
+    } else if (sceneIndex === 4) {
       if (step === 0 && player.y < 120) advanceStep();
     }
   }
@@ -1526,6 +3112,12 @@
       // detection
       if (player.inv <= 0 && dist(player.x, player.y, p.x, p.y) < def.detect) {
         p.mode = 'chase';
+        AudioSys.sfx('alarm');
+        // alert nearby patrols: one shout brings the others
+        var s = SCENES[sceneIndex];
+        s.patrols.forEach(function (q) {
+          if (q !== p && q.mode === 'patrol' && dist(q.x, q.y, p.x, p.y) < 150) q.mode = 'chase';
+        });
       }
     } else if (p.mode === 'chase') {
       var dx2 = player.x - p.x, dy2 = player.y - p.y;
@@ -1563,7 +3155,7 @@
   function doInteract() {
     if (state !== 'play' || !nearTarget) return;
     var t = nearTarget;
-    if (t.type === 'npc') { t.ref.interact(); }
+    if (t.type === 'npc') { dialogSpeaker = t.ref.name || ''; t.ref.interact(); }
     else if (t.type === 'item') {
       var it = t.ref;
       if (it.taken) return;
@@ -1577,6 +3169,7 @@
       m.taken = true; memCount++;
       belonging = clamp(belonging + 5, 0, 100);
       AudioSys.sfx('memory');
+      dialogSpeaker = 'MEMORY';
       startDialogue([m.text]);
     } else if (t.type === 'rest') {
       var r = t.ref;
@@ -1586,6 +3179,7 @@
       else showMsg('YOU REST. YOU FEEL STEADIER.');
       burst(r.x, r.y, '#7fb3e8', 8);
     } else if (t.type === 'flyer') {
+      dialogSpeaker = 'A FLYER';
       startDialogue(["A flyer, taped crooked to the wall: TAKE BACK OUR STREETS.", "Underneath, someone's written in marker: whose streets?"]);
     } else if (t.type === 'door') {
       var d = t.ref;
@@ -1732,64 +3326,118 @@
       ctx.textAlign = 'left';
     }
   }
+  function drawBar(x, y, w, frac, color, label) {
+    // classic pixel bar: dark border, segmented fill, label
+    ctx.fillStyle = '#0b0f18'; ctx.fillRect(x - 1, y - 1, w + 2, 8);
+    ctx.fillStyle = '#3a4a6b'; ctx.fillRect(x, y, w, 6);
+    ctx.fillStyle = color;
+    var fw = Math.round(w * clamp(frac, 0, 1));
+    ctx.fillRect(x, y, fw, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, fw, 2);
+    if (label) { ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT; ctx.fillText(label, x, y - 2); }
+  }
   function drawHUD() {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, W, 40);
-    // scene name + objective
+    ctx.fillStyle = '#ffd76a'; ctx.fillRect(0, 40, W, 2);
+    // scene name
     ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT;
     ctx.fillText(SCENES[sceneIndex].name, 8, 14);
-    ctx.fillStyle = '#e8ecf3';
+    // journey progress: one small door per scene
+    var n = SCENES.length;
+    var jx = 300;
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
+    ctx.fillText('JOURNEY', jx - 52, 14);
+    for (var j = 0; j < n; j++) {
+      var dx = jx + j * 18;
+      if (j < sceneIndex) { ctx.fillStyle = '#ffd76a'; ctx.fillRect(dx, 6, 10, 12); ctx.fillStyle = '#7a5a10'; ctx.fillRect(dx + 3, 9, 4, 6); }
+      else if (j === sceneIndex) { ctx.fillStyle = '#e8ecf3'; ctx.fillRect(dx, 6, 10, 12); ctx.fillStyle = '#ffd76a'; ctx.fillRect(dx + 1, 7, 8, 10); ctx.fillStyle = '#7a5a10'; ctx.fillRect(dx + 4, 10, 3, 5); }
+      else { ctx.fillStyle = '#3a4a6b'; ctx.fillRect(dx, 6, 10, 12); }
+    }
+    // hope: actual pixel hearts
+    var hx = W - 170;
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
+    ctx.fillText('HOPE', hx - 36, 14);
+    for (var i = 0; i < maxHope; i++) {
+      if (i < hope) drawSprite('heart', 0, hx + i * 18, 4);
+      else { ctx.fillStyle = '#3a3a3a'; ctx.fillRect(hx + i * 18 + 2, 6, 12, 10); ctx.fillStyle = '#232833'; ctx.fillRect(hx + i * 18 + 4, 8, 8, 6); }
+    }
+    // stamina + belonging (bordered pixel bars)
+    drawBar(W - 150, 22, 140, stamina / 100, '#2ecc71', '');
+    drawBar(W - 150, 33, 140, belonging / 100, '#ffd76a', '');
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
+    ctx.fillText('RUN', W - 150, 21);
+    ctx.fillText('BELONG', W - 150, 32);
+    // objective
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
     var obj = SCENES[sceneIndex].objectives[step] || '';
     ctx.fillText('GOAL: ' + obj, 8, 28);
-    // hope hearts
-    var hx = W - 150;
-    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
-    ctx.fillText('HOPE', hx - 40, 14);
-    for (var i = 0; i < maxHope; i++) {
-      ctx.fillStyle = i < hope ? '#e74c3c' : '#3a3a3a';
-      ctx.fillRect(hx + i * 16, 6, 12, 12);
-      if (i < hope) { ctx.fillStyle = '#ff6b6b'; ctx.fillRect(hx + i * 16 + 2, 8, 4, 4); ctx.fillRect(hx + i * 16 + 6, 8, 4, 4); }
-    }
-    // stamina + belonging
-    ctx.fillStyle = '#2ecc71';
-    ctx.fillRect(W - 150, 20, stamina * 1.4, 6);
-    ctx.fillStyle = '#ffd76a';
-    ctx.fillRect(W - 150, 29, belonging * 1.4, 6);
-    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
-    ctx.fillText('RUN', W - 150, 19);
-    ctx.fillText('BELONG', W - 150, 28);
-    // inventory
+    // inventory icons + memories
     var ix = 8;
     ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
-    ctx.fillText('CARRYING: ' + (inventory.length ? inventory.join(', ').toUpperCase() : 'NOTHING') + (memCount ? '   MEMORIES: ' + memCount : ''), ix, 38);
+    ctx.fillText('CARRYING:', ix, 38);
+    var ixx = ix + 62;
+    if (inventory.length === 0) { ctx.fillStyle = '#5a6a80'; ctx.fillText('NOTHING', ixx, 38); }
+    inventory.forEach(function (it) { drawItemIcon(ixx, 30, it, 0); ixx += 20; });
+    ctx.fillStyle = '#ffd76a';
+    ctx.fillText('MEMORIES: ' + memCount + '/' + totalMemories(), W - 150, 38);
   }
-  function drawBox(lines, title) {
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  function totalMemories() {
+    var c = 0;
+    SCENES.forEach(function (s) { c += s.memories.length; });
+    return c;
+  }
+  function drawBox(lines, title, t) {
+    // classic RPG dialogue box: double border, speaker name tag, blinking continue
+    ctx.fillStyle = 'rgba(0,0,0,0.88)';
     ctx.fillRect(40, H - 130, W - 80, 120);
     ctx.strokeStyle = '#ffd76a'; ctx.lineWidth = 2;
     ctx.strokeRect(40, H - 130, W - 80, 120);
-    if (title) { ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.fillText(title, 56, H - 110); }
+    ctx.strokeStyle = '#7a5a10'; ctx.lineWidth = 1;
+    ctx.strokeRect(44, H - 126, W - 88, 112);
+    var speaker = (dialog && dialog.speaker) || title || '';
+    if (speaker) {
+      ctx.fillStyle = '#ffd76a';
+      var sw = ctx.measureText(speaker).width + 16;
+      ctx.fillRect(52, H - 142, sw, 18);
+      ctx.fillStyle = '#000'; ctx.font = '8px ' + FONT;
+      ctx.fillText(speaker, 60, H - 130);
+    }
     ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
-    var y = title ? H - 92 : H - 108;
+    var y = speaker ? H - 96 : H - 108;
     lines.forEach(function (ln) { y = wrapText(ln, 56, y, W - 112, 16, false) + 8; });
     ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
     ctx.fillText('ENTER — CONTINUE', W - 150, H - 18);
+    // blinking continue triangle
+    if (t && Math.floor(t / 350) % 2 === 0) {
+      ctx.fillStyle = '#ffd76a';
+      var bx = W - 62, by = H - 30;
+      ctx.fillRect(bx, by, 8, 2); ctx.fillRect(bx + 2, by + 2, 4, 2); ctx.fillRect(bx + 3, by + 4, 2, 2);
+    }
   }
   function drawChoice() {
-    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.78)'; ctx.fillRect(0, 0, W, H);
+    // menu panel with double border
+    ctx.fillStyle = 'rgba(0,0,0,0.9)';
+    ctx.fillRect(W / 2 - 210, 84, 420, 200);
+    ctx.strokeStyle = '#ffd76a'; ctx.lineWidth = 2;
+    ctx.strokeRect(W / 2 - 210, 84, 420, 200);
+    ctx.strokeStyle = '#7a5a10'; ctx.lineWidth = 1;
+    ctx.strokeRect(W / 2 - 206, 88, 412, 192);
     ctx.fillStyle = '#ffd76a'; ctx.font = '10px ' + FONT; ctx.textAlign = 'center';
-    ctx.fillText(choice.prompt, W / 2, 110);
+    ctx.fillText(choice.prompt, W / 2, 116);
     ctx.textAlign = 'left';
     choice.opts.forEach(function (o, i) {
-      var y = 150 + i * 36;
+      var y = 140 + i * 36;
       ctx.fillStyle = i === choice.sel ? '#ffd76a' : '#232f47';
       ctx.fillRect(W / 2 - 190, y, 380, 28);
       ctx.fillStyle = i === choice.sel ? '#000' : '#e8ecf3';
       ctx.font = '9px ' + FONT;
-      ctx.fillText((i + 1) + '. ' + o.label, W / 2 - 178, y + 18);
+      var label = (i === choice.sel ? '> ' : '  ') + (i + 1) + '. ' + o.label;
+      ctx.fillText(label, W / 2 - 178, y + 18);
     });
     ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT; ctx.textAlign = 'center';
-    ctx.fillText('UP / DOWN OR CLICK — ENTER TO CHOOSE', W / 2, 280);
+    ctx.fillText('UP / DOWN OR CLICK — ENTER TO CHOOSE', W / 2, 262);
     ctx.textAlign = 'left';
   }
   function drawTitle(t) {
@@ -1808,6 +3456,19 @@
     ctx.fillText('PRESS ENTER TO BEGIN', W / 2, 320);
     ctx.textAlign = 'left';
   }
+  function drawIntro(t) {
+    // scene title card over a dimmed scene
+    drawScene(t);
+    var a = clamp(introT / 2.4, 0, 1);
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.55 * a + 0.15) + ')';
+    ctx.fillRect(0, 0, W, H);
+    var s = SCENES[sceneIndex];
+    ctx.fillStyle = '#ffd76a'; ctx.font = '14px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText(s.name, W / 2, 160);
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
+    wrapText(s.intro, W / 2, 190, 520, 18, true);
+    ctx.textAlign = 'left';
+  }
   function drawTransition() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#ffd76a'; ctx.font = '10px ' + FONT; ctx.textAlign = 'center';
@@ -1819,11 +3480,13 @@
   function drawEnding() {
     ctx.fillStyle = '#0b0f18'; ctx.fillRect(0, 0, W, H);
     ctx.fillStyle = '#ffd76a'; ctx.font = '11px ' + FONT; ctx.textAlign = 'center';
-    wrapText(ending.title, W / 2, 80, 560, 22, true);
+    wrapText(ending.title, W / 2, 70, 560, 22, true);
     ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
-    wrapText(ending.body, W / 2, 130, 520, 18, true);
+    wrapText(ending.body, W / 2, 120, 520, 18, true);
+    ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT;
+    ctx.fillText('MEMORIES COLLECTED: ' + memCount + ' / ' + totalMemories(), W / 2, 280);
     ctx.fillStyle = '#9fb0c3'; ctx.font = '8px ' + FONT;
-    ctx.fillText('PRESS R TO PLAY AGAIN', W / 2, 320);
+    ctx.fillText('PRESS R TO PLAY AGAIN', W / 2, 310);
     ctx.textAlign = 'left';
   }
   function drawGameOver() {
@@ -1841,12 +3504,13 @@
     ctx.save();
     if (shakeT > 0) ctx.translate((Math.random() - 0.5) * shakeMag, (Math.random() - 0.5) * shakeMag);
     if (state === 'title') drawTitle(t);
+    else if (state === 'intro') drawIntro(t);
     else if (state === 'transition') drawTransition();
     else if (state === 'ending') drawEnding();
     else if (state === 'gameover') drawGameOver();
     else {
       drawScene(t);
-      if (state === 'talk' && dialog) drawBox([dialog.lines[dialog.idx]], 'DIALOGUE');
+      if (state === 'talk' && dialog) drawBox([dialog.lines[dialog.idx]], null, t);
       if (state === 'choice' && choice) drawChoice();
     }
     ctx.restore();
@@ -1860,8 +3524,7 @@
     if (k === 'r') { resetGame(); return; }
     if (state === 'title' && (k === 'enter' || k === ' ')) {
       AudioSys.init(); AudioSys.startMusic();
-      state = 'play';
-      showMsg(SCENES[0].intro);
+      goToScene(0);
       return;
     }
     if (state === 'talk' && (k === 'enter' || k === 'e' || k === ' ')) { advanceDialogue(); return; }
@@ -1888,14 +3551,14 @@
   window.addEventListener('keyup', onKeyUp);
   canvas.addEventListener('click', function (e) {
     AudioSys.init(); AudioSys.startMusic();
-    if (state === 'title') { state = 'play'; showMsg(SCENES[0].intro); return; }
+    if (state === 'title') { goToScene(0); return; }
     if (state === 'talk') { advanceDialogue(); return; }
     if (state === 'choice' && choice) {
       var rect = canvas.getBoundingClientRect();
       var mx = (e.clientX - rect.left) * (W / rect.width);
       var my = (e.clientY - rect.top) * (H / rect.height);
       for (var i = 0; i < choice.opts.length; i++) {
-        var y = 150 + i * 36;
+        var y = 140 + i * 36;
         if (mx > W / 2 - 190 && mx < W / 2 + 190 && my > y && my < y + 28) { pickChoice(i); return; }
       }
       return;
@@ -1930,8 +3593,12 @@
         var to = transition.to;
         transition = null;
         goToScene(to);
+      }
+    } else if (state === 'intro') {
+      introT -= dt;
+      if (introT <= 0) {
         state = 'play';
-        showMsg(SCENES[to].intro);
+        showMsg(SCENES[sceneIndex].intro);
       }
     } else {
       update(dt);
