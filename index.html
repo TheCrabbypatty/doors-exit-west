@@ -62,8 +62,8 @@
     <h2>HOW TO PLAY</h2>
     <p><b>MOVE:</b> ARROW KEYS / WASD. <b>RUN:</b> HOLD SHIFT (USES STAMINA). <b>TALK / USE:</b> E WHEN YOU SEE THE PROMPT. <b>CONTINUE:</b> ENTER. <b>CHOOSE:</b> 1 / 2 / 3 OR CLICK. <b>SOUND:</b> M. <b>RESTART:</b> R.</p>
     <p><b>HOPE:</b> THE HEARTS. PATROLS TAKE ONE WHEN THEY CATCH YOU. HELPING PEOPLE AND RESTING GIVES ONE BACK. IF HOPE RUNS OUT, YOU TURN BACK.</p>
-    <p><b>GOAL:</b> EACH PLACE HAS AN OBJECTIVE. FINISH IT, THEN WALK INTO THE GLOWING DOOR. THE DOOR REMOVES THE JOURNEY — NOT THE CONSEQUENCES.</p>
-    <p><b>WHAT IT IS ABOUT:</b> IN EXIT WEST, DOORS LET PEOPLE STEP INSTANTLY FROM ONE COUNTRY TO ANOTHER. THE GAME ARGUES THAT ARRIVAL IS INSTANT, BUT BELONGING, SAFETY, AND WHAT MIGRATION COSTS THE PEOPLE YOU LOVE ARE NOT.</p>
+    <p><b>MEMORIES:</b> THE GLOWING PAGES. EACH ONE IS A MOMENT FROM THE BOOK. COLLECT THEM.</p>
+    <p><b>GOAL:</b> EACH PLACE HAS A LIST OF THINGS TO DO. FINISH THEM, THEN WALK INTO THE GLOWING DOOR.</p>
   </div>
 </div>
 <script>
@@ -74,20 +74,40 @@
   var W = 640, H = 360;
   var FONT = '"Press Start 2P", monospace';
 
-  /* ================= AUDIO: procedural chiptune + SFX ================= */
+  /* ================= AUDIO: a composed chiptune ================= */
+  // 64-step loop, Am - F - C - G. Lead, bass, arpeggio, drums.
   var AudioSys = {
     ctx: null, muted: false, musicTimer: null, step: 0,
-    stepDur: 0.21,
-    // A-minor chiptune loop, 32 steps. 0 = rest.
-    lead: [69,0,72,0, 76,0,74,0, 72,0,74,0, 76,0,0,0,
-           79,0,76,0, 74,0,72,0, 74,0,69,0, 67,0,69,0],
-    bass: [45,0,0,0, 45,0,0,0, 48,0,0,0, 48,0,0,0,
-           41,0,0,0, 41,0,0,0, 43,0,0,0, 43,0,0,0],
+    stepDur: 0.20, leadWave: 'square', noiseBuf: null,
+    lead: [
+      69,0,72,0, 76,0,74,72, 71,0,72,0, 69,0,0,0,
+      72,0,74,0, 76,0,77,76, 74,0,72,0, 71,0,0,0,
+      72,0,76,0, 79,0,76,74, 72,0,74,0, 76,0,0,0,
+      74,0,71,0, 72,0,71,69, 67,0,69,0, 0,0,0,0
+    ],
+    bass: [
+      45,0,0,0, 45,0,0,0, 45,0,0,0, 52,0,0,0,
+      41,0,0,0, 41,0,0,0, 41,0,0,0, 48,0,0,0,
+      48,0,0,0, 48,0,0,0, 48,0,0,0, 55,0,0,0,
+      43,0,0,0, 43,0,0,0, 43,0,0,0, 50,0,0,0
+    ],
+    arp: [
+      69,72,76,72, 69,72,76,72, 69,72,76,72, 69,72,76,72,
+      65,69,72,69, 65,69,72,69, 65,69,72,69, 65,69,72,69,
+      67,72,76,72, 67,72,76,72, 67,72,76,72, 67,72,76,72,
+      67,71,74,71, 67,71,74,71, 67,71,74,71, 67,71,74,71
+    ],
     init: function () {
       if (!this.ctx) {
         try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; }
       }
       if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx && !this.noiseBuf) {
+        var len = this.ctx.sampleRate * 0.5;
+        this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        var d = this.noiseBuf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      }
     },
     freq: function (midi) { return 440 * Math.pow(2, (midi - 69) / 12); },
     tone: function (freq, dur, type, vol, delay) {
@@ -103,19 +123,56 @@
       o.connect(g); g.connect(this.ctx.destination);
       o.start(t0); o.stop(t0 + dur + 0.05);
     },
+    kick: function () {
+      if (!this.ctx || this.muted) return;
+      var t0 = this.ctx.currentTime;
+      var o = this.ctx.createOscillator();
+      var g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(150, t0);
+      o.frequency.exponentialRampToValueAtTime(45, t0 + 0.12);
+      g.gain.setValueAtTime(0.14, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+      o.connect(g); g.connect(this.ctx.destination);
+      o.start(t0); o.stop(t0 + 0.16);
+    },
+    noise: function (dur, vol, freq, delay) {
+      if (!this.ctx || this.muted || !this.noiseBuf) return;
+      var t0 = this.ctx.currentTime + (delay || 0);
+      var src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuf;
+      var f = this.ctx.createBiquadFilter();
+      f.type = 'highpass'; f.frequency.value = freq || 6000;
+      var g = this.ctx.createGain();
+      g.gain.setValueAtTime(vol || 0.03, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(f); f.connect(g); g.connect(this.ctx.destination);
+      src.start(t0); src.stop(t0 + dur + 0.02);
+    },
     startMusic: function () {
       if (this.musicTimer || !this.ctx) return;
       var self = this;
       this.musicTimer = setInterval(function () {
-        if (self.muted) return;
-        var i = self.step % 32;
-        var ln = self.lead[i], bn = self.bass[i];
-        if (ln) self.tone(self.freq(ln), self.stepDur * 0.95, 'square', 0.035);
-        if (bn) self.tone(self.freq(bn), self.stepDur * 1.8, 'triangle', 0.06);
+        if (self.muted) { self.step++; return; }
+        var i = self.step % 64;
+        var ln = self.lead[i], bn = self.bass[i], an = self.arp[i];
+        if (ln) self.tone(self.freq(ln), self.stepDur * 0.95, self.leadWave, 0.032);
+        if (bn) self.tone(self.freq(bn), self.stepDur * 1.8, 'triangle', 0.055);
+        if (an) self.tone(self.freq(an), self.stepDur * 0.5, 'triangle', 0.018);
+        if (i % 16 === 0 || i % 16 === 8) self.kick();
+        if (i % 16 === 4 || i % 16 === 12) self.noise(0.09, 0.05, 1800);
+        if (i % 4 === 2) self.noise(0.03, 0.02, 8000);
         self.step++;
       }, this.stepDur * 1000);
     },
     stopMusic: function () { if (this.musicTimer) { clearInterval(this.musicTimer); this.musicTimer = null; } },
+    setMood: function (mood) {
+      if (mood === 'london' || mood === 'march') { this.stepDur = 0.165; this.leadWave = 'square'; }
+      else if (mood === 'marin') { this.stepDur = 0.24; this.leadWave = 'sine'; }
+      else if (mood === 'city') { this.stepDur = 0.22; this.leadWave = 'square'; }
+      else { this.stepDur = 0.20; this.leadWave = 'square'; }
+      if (this.musicTimer) { this.stopMusic(); this.startMusic(); }
+    },
     setMuted: function (m) {
       this.muted = m;
       var b = document.getElementById('btn-mute');
@@ -131,6 +188,7 @@
       else if (name === 'hope') { [523, 659, 784, 1046].forEach(function (f, i) { self.tone(f, 0.12, 'sine', 0.07, i * 0.07); }); }
       else if (name === 'talk') { self.tone(440, 0.06, 'square', 0.04); }
       else if (name === 'deny') { self.tone(196, 0.12, 'square', 0.05); }
+      else if (name === 'memory') { [784, 988, 1175].forEach(function (f, i) { self.tone(f, 0.14, 'sine', 0.06, i * 0.08); }); }
     }
   };
 
@@ -155,66 +213,751 @@
     return yy;
   }
 
-  /* ================= pixel-character drawing ================= */
-  // Draws a chunky pixel person with a 2-frame walk cycle.
-  // opts: {shirt, pants, hair, skin, frame (0/1), moving, flip, cap}
-  function drawChar(x, y, o) {
-    var f = o.frame || 0;
-    var moving = o.moving;
-    var legSwing = moving ? (f === 0 ? -2 : 2) : 0;
+  /* ================= pixel-art sprite system ================= */
+  // SPRITES holds the bitmap data (filled in by the sprite pass).
+  var SPRITES = {
+  "saeed": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "H": "#241a12",
+      "h": "#4a3626",
+      "S": "#d9a06b",
+      "s": "#b07f52",
+      "E": "#1a1a1a",
+      "M": "#7a3a2a",
+      "J": "#3a5a8a",
+      "j": "#2a4060",
+      "P": "#2b3a55",
+      "p": "#1e2a40",
+      "B": "#1a1a1a"
+    },
+    "frames": [
+      [
+        "....HHHH....",
+        "...HHhHHH...",
+        "...HHHHHH...",
+        "...HSSSSH...",
+        "...SESSES...",
+        "...SSSsSS...",
+        "...SSMMSS...",
+        "...JJSSJJ...",
+        "..JJJJJjjj..",
+        "..JJJjJjjj..",
+        "..SJJJJjjS..",
+        "...PPPPPP...",
+        "...PP..PP...",
+        "...PP..PP...",
+        "...PP..pp...",
+        "...BB..BB..."
+      ],
+      [
+        "....HHHH....",
+        "...HHhHHH...",
+        "...HHHHHH...",
+        "...HSSSSH...",
+        "...SESSES...",
+        "...SSSsSS...",
+        "...SSMMSS...",
+        "...JJSSJJ...",
+        "..JJJJJjjj..",
+        "..JJJjJjjj..",
+        "..SJJJJjjS..",
+        "...PPPPPP...",
+        "..PP....PP..",
+        "..PP....PP..",
+        "..PP....pp..",
+        "..BBB...BB.."
+      ]
+    ]
+  },
+  "nadia": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "H": "#3a2a35",
+      "h": "#5a3a4a",
+      "S": "#d9a06b",
+      "s": "#b07f52",
+      "E": "#1a1a1a",
+      "M": "#7a3a2a",
+      "R": "#2e2a3a",
+      "r": "#1e1a28",
+      "B": "#1a1a1a"
+    },
+    "frames": [
+      [
+        "...HHHHHH...",
+        "..HHhHHHHH..",
+        "..HHHHHHHH..",
+        "..HSSSSSSH..",
+        "..HSESSESH..",
+        "..HSSSsSSH..",
+        "..HSSMMSSH..",
+        "..HHHHHHHH..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "..RRRrRRrr..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "...BB..BB..."
+      ],
+      [
+        "...HHHHHH...",
+        "..HHhHHHHH..",
+        "..HHHHHHHH..",
+        "..HSSSSSSH..",
+        "..HSESSESH..",
+        "..HSSSsSSH..",
+        "..HSSMMSSH..",
+        "..HHHHHHHH..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "..RRRrRRrr..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "..RRRRRRrr..",
+        "..RRR..Rrr..",
+        "..BB....BB.."
+      ]
+    ]
+  },
+  "soldier": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "C": "#4a5230",
+      "c": "#333a20",
+      "Y": "#c8a84a",
+      "S": "#d9a06b",
+      "s": "#b07f52",
+      "E": "#1a1a1a",
+      "M": "#7a3a2a",
+      "U": "#5a6038",
+      "u": "#434a28",
+      "P": "#3a4030",
+      "p": "#2a2f22",
+      "B": "#1a1a1a"
+    },
+    "frames": [
+      [
+        "....CCCC....",
+        "...CCYCCC...",
+        "...CCCCCC...",
+        "..cccccccc..",
+        "...SSSSSS...",
+        "...SESSES...",
+        "...SSSsSS...",
+        "...SSMMSS...",
+        "...UUSSUU...",
+        "..UUUUUUuu..",
+        "..UUUuUUuu..",
+        "..SUUUUuuS..",
+        "...PPPPPP...",
+        "...PP..PP...",
+        "...PP..pp...",
+        "..BBB..BBB.."
+      ],
+      [
+        "....CCCC....",
+        "...CCYCCC...",
+        "...CCCCCC...",
+        "..cccccccc..",
+        "...SSSSSS...",
+        "...SESSES...",
+        "...SSSsSS...",
+        "...SSMMSS...",
+        "...UUSSUU...",
+        "..UUUUUUuu..",
+        "..UUUuUUuu..",
+        "..SUUUUuuS..",
+        "...PPPPPP...",
+        "..PP....PP..",
+        "..PP....pp..",
+        "..BBB...BBB."
+      ]
+    ]
+  },
+  "guard": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "C": "#2a3a55",
+      "c": "#1e2a40",
+      "S": "#d9a06b",
+      "s": "#b07f52",
+      "E": "#1a1a1a",
+      "M": "#7a3a2a",
+      "U": "#2e405e",
+      "u": "#223048",
+      "Y": "#c8a84a",
+      "P": "#24324a",
+      "p": "#1a2436",
+      "B": "#1a1a1a"
+    },
+    "frames": [
+      [
+        "....CCCC....",
+        "...CCCCCC...",
+        "...CccccC...",
+        "..cccccccc..",
+        "...SSSSSS...",
+        "...SESSES...",
+        "...SSSsSS...",
+        "...SSMMSS...",
+        "...UUSSUU...",
+        "..UUUUUUuu..",
+        "..UUUYUUuu..",
+        "..SUUUUuuS..",
+        "...PPPPPP...",
+        "...PP..PP...",
+        "...PP..pp...",
+        "..BBB..BBB.."
+      ],
+      [
+        "....CCCC....",
+        "...CCCCCC...",
+        "...CccccC...",
+        "..cccccccc..",
+        "...SSSSSS...",
+        "...SESSES...",
+        "...SSSsSS...",
+        "...SSMMSS...",
+        "...UUSSUU...",
+        "..UUUUUUuu..",
+        "..UUUYUUuu..",
+        "..SUUUUuuS..",
+        "...PPPPPP...",
+        "..PP....PP..",
+        "..PP....pp..",
+        "..BBB...BBB."
+      ]
+    ]
+  },
+  "nativist": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "C": "#4a2e1e",
+      "c": "#33200f",
+      "S": "#e8b88a",
+      "s": "#c89a6e",
+      "d": "#3a2a1a",
+      "E": "#1a1a1a",
+      "M": "#7a3a2a",
+      "J": "#7a3a28",
+      "j": "#5a2a1c",
+      "P": "#3a2a20",
+      "p": "#2a1e16",
+      "B": "#1a1a1a"
+    },
+    "frames": [
+      [
+        "....CCCC....",
+        "...CCCCCC...",
+        "..CCCCCCCC..",
+        "...SSSSSS...",
+        "...EESSEE...",
+        "...SSSsSS...",
+        "...SMMMMS...",
+        "...ddSSdd...",
+        "...JJSSJJ...",
+        "..JJJJJjjj..",
+        "..JJJjJjjj..",
+        "..SJJJJjjS..",
+        "...PPPPPP...",
+        "...PP..PP...",
+        "...PP..pp...",
+        "..BBB..BBB.."
+      ],
+      [
+        "....CCCC....",
+        "...CCCCCC...",
+        "..CCCCCCCC..",
+        "...SSSSSS...",
+        "...EESSEE...",
+        "...SSSsSS...",
+        "...SMMMMS...",
+        "...ddSSdd...",
+        "...JJSSJJ...",
+        "..JJJJJjjj..",
+        "..JJJjJjjj..",
+        "..SJJJJjjS..",
+        "...PPPPPP...",
+        "..PP....PP..",
+        "..PP....pp..",
+        "..BBB...BBB."
+      ]
+    ]
+  },
+  "housemate": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "H": "#96685e",
+      "S": "#d9a06b",
+      "s": "#b3854f",
+      "E": "#2a1a12",
+      "M": "#7a3a2a",
+      "J": "#6a7a5f",
+      "j": "#4f5d47",
+      "K": "#3a3a42",
+      "k": "#2a2a31",
+      "B": "#241d18"
+    },
+    "frames": [
+      [
+        "....HHHH....",
+        "...HHHHHH...",
+        "...HHHHHH...",
+        "...HSSSSH...",
+        "...HESESH...",
+        "...HSsSSH...",
+        "...HSMSSH...",
+        "..HHSSSSHH..",
+        ".JJJJJJJJJJ.",
+        ".JJJJJJJJJj.",
+        ".JJJJJJJJJj.",
+        ".SJJJJJJJjS.",
+        "..KKKKKKKk..",
+        "..KKKKKKKk..",
+        "..KKKKKKKk..",
+        "....BBBB...."
+      ],
+      [
+        "....HHHH....",
+        "...HHHHHH...",
+        "...HHHHHH...",
+        "...HSSSSH...",
+        "...HESESH...",
+        "...HSsSSH...",
+        "...HSMSSH...",
+        "..HHSSSSHH..",
+        ".JJJJJJJJJJ.",
+        ".JJJJJJJJJj.",
+        ".JJJJJJJJJj.",
+        ".SJJJJJJJjS.",
+        "..KKKKKKKk..",
+        "..KKKKKKKk..",
+        "..KKK..KKk..",
+        "...BB..BB..."
+      ]
+    ]
+  },
+  "worker": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "C": "#3a4a5a",
+      "S": "#c98f5f",
+      "s": "#a87a4e",
+      "E": "#2a1a12",
+      "M": "#7a3a2a",
+      "D": "#33333a",
+      "V": "#c47a3a",
+      "v": "#9a5f2c",
+      "R": "#c8b06a",
+      "P": "#2b2b33",
+      "p": "#22222a",
+      "B": "#241d18"
+    },
+    "frames": [
+      [
+        "....CCCC....",
+        "...CCCCCC...",
+        "..CCCCCCCC..",
+        "...SSSSSS...",
+        "...SESESS...",
+        "...SSsSSS...",
+        "...SSMSSS...",
+        "..DDSSSSDD..",
+        ".DVVVVVVVVD.",
+        ".DVVVVVVVvD.",
+        ".DRRRRRRRRD.",
+        ".SDVVVVVvDS.",
+        "..PPPPPPPp..",
+        "..PPPPPPPp..",
+        "..PPPPPPPp..",
+        "....BBBB...."
+      ],
+      [
+        "....CCCC....",
+        "...CCCCCC...",
+        "..CCCCCCCC..",
+        "...SSSSSS...",
+        "...SESESS...",
+        "...SSsSSS...",
+        "...SSMSSS...",
+        "..DDSSSSDD..",
+        ".DVVVVVVVVD.",
+        ".DVVVVVVVvD.",
+        ".DRRRRRRRRD.",
+        ".SDVVVVVvDS.",
+        "..PPPPPPPp..",
+        "..PPPPPPPp..",
+        "..PPP..PPp..",
+        "...BB..BB..."
+      ]
+    ]
+  },
+  "migrant": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "H": "#3a2a1e",
+      "S": "#c98f5f",
+      "s": "#a87a4e",
+      "E": "#2a1a12",
+      "M": "#7a3a2a",
+      "F": "#4a3a2c",
+      "C": "#6b4a2f",
+      "c": "#54391f",
+      "D": "#2e2e36",
+      "d": "#232329",
+      "B": "#241d18"
+    },
+    "frames": [
+      [
+        "....HHHH....",
+        "...HHHHHH...",
+        "...HHHHHH...",
+        "...SSSSSS...",
+        "...SESESS...",
+        "...SSsSSS...",
+        "...SFMMFS...",
+        "..CFFFFFFC..",
+        ".CCCCCCCCCc.",
+        ".CCCCdCCCCc.",
+        ".CCCCdCCCCc.",
+        ".SCCCCCCCcS.",
+        "..DDDDDDDd..",
+        "..DDDDDDDd..",
+        "..DDDDDDDd..",
+        "....BBBB...."
+      ],
+      [
+        "....HHHH....",
+        "...HHHHHH...",
+        "...HHHHHH...",
+        "...SSSSSS...",
+        "...SESESS...",
+        "...SSsSSS...",
+        "...SFMMFS...",
+        "..CFFFFFFC..",
+        ".CCCCCCCCCc.",
+        ".CCCCdCCCCc.",
+        ".CCCCdCCCCc.",
+        ".SCCCCCCCcS.",
+        "..DDDDDDDd..",
+        "..DDDDDDDd..",
+        "..DDD..DDd..",
+        "...BB..BB..."
+      ]
+    ]
+  },
+  "local": {
+    "w": 12,
+    "h": 16,
+    "palette": {
+      "G": "#8a8a82",
+      "g": "#6e6e66",
+      "S": "#d9a887",
+      "s": "#b3854f",
+      "E": "#2a1a12",
+      "M": "#7a3a2a",
+      "T": "#b89a6a",
+      "t": "#9a7f52",
+      "U": "#7d7468",
+      "D": "#2e2e36",
+      "d": "#232329",
+      "B": "#3a2a1c"
+    },
+    "frames": [
+      [
+        "....GGGG....",
+        "...GGGGGG...",
+        "...GGGGGg...",
+        "...SSSSSS...",
+        "...SESESS...",
+        "...SSsSSS...",
+        "...SSMSSS...",
+        "..TTSSSSTT..",
+        ".TTTTTTTTTt.",
+        ".TTTTUUTTTt.",
+        ".TTTTUUTTTt.",
+        ".STTTUUTTTS.",
+        "..DDDDDDDd..",
+        "..DDDDDDDd..",
+        "..DDDDDDDd..",
+        "....BBBB...."
+      ],
+      [
+        "....GGGG....",
+        "...GGGGGG...",
+        "...GGGGGg...",
+        "...SSSSSS...",
+        "...SESESS...",
+        "...SSsSSS...",
+        "...SSMSSS...",
+        "..TTSSSSTT..",
+        ".TTTTTTTTTt.",
+        ".TTTTUUTTTt.",
+        ".TTTTUUTTTt.",
+        ".STTTUUTTTS.",
+        "..DDDDDDDd..",
+        "..DDDDDDDd..",
+        "..DDD..DDd..",
+        "...BB..BB..."
+      ]
+    ]
+  },
+  "door": {
+    "w": 16,
+    "h": 24,
+    "palette": {
+      "W": "#5a3a22",
+      "w": "#7a4e2e",
+      "L": "#9a6b3f",
+      "P": "#4a2c18",
+      "G": "#ffd76a",
+      "g": "#e8b84a",
+      "H": "#2e2a24"
+    },
+    "frames": [
+      [
+        "WWWWWWWWWWWWWWWW",
+        "WwwwwwwwwwwwwwwW",
+        "WwPPPPPPPPPPPPwW",
+        "WwPwwwwwwwwwwPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPwwwwwwwwwwPwW",
+        "WwwwwwwwwwwwwwwW",
+        "WwPPPPPPPPPPPPwW",
+        "WwPwwwwwwwwwwPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPLLLgGGgLLLPHW",
+        "WwPLLLgGGgLLLPwW",
+        "WwPwwwwwwwwwwPwW",
+        "WwPPPPPPPPPPPPwW",
+        "WwwwwwwwwwwwwwwW",
+        "WwwwwwwwwwwwwwwW",
+        "WWWWWWWWWWWWWWWW"
+      ]
+    ]
+  },
+  "tent": {
+    "w": 24,
+    "h": 16,
+    "palette": {
+      "C": "#b8a67e",
+      "c": "#9a8a62",
+      "f": "#7a6a4a",
+      "D": "#2e2620",
+      "P": "#6b4a2a",
+      "G": "#4a4a4a"
+    },
+    "frames": [
+      [
+        "...........PP...........",
+        "..........CCCC..........",
+        ".........CCCCCC.........",
+        "........CCCccCCC........",
+        ".......CCCccccCCC.......",
+        "......CCCfccccfCCC......",
+        ".....CCCffccccffCCC.....",
+        "....CCCffccccccffCCC....",
+        "...CCCffccccccccffCCC...",
+        "..CCCffcccDDDDcccffCCC..",
+        ".CCCffcccDDDDDDcccffCCC.",
+        "CCCffcccDDDDDDDDcccffCCC",
+        "CCCffccDDDDDDDDDDccffCCC",
+        "CCCffccDDDDDDDDDDccffCCC",
+        "cccccccDDDDDDDDDDccccccc",
+        ".G....................G."
+      ]
+    ]
+  },
+  "tree": {
+    "w": 16,
+    "h": 24,
+    "palette": {
+      "T": "#5a3a22",
+      "t": "#7a5230",
+      "L": "#6a8a4a",
+      "l": "#4a6a32",
+      "d": "#33501f",
+      "G": "#8aa85e"
+    },
+    "frames": [
+      [
+        "......LLLL......",
+        "....GLlllLLL....",
+        "...GLldddllLL...",
+        "..GLlddlllllLL..",
+        "..LlddddlllLLL..",
+        ".GLlddlllLLLllL.",
+        ".LllddlllLLllld.",
+        "LLlddlllLLlllllL",
+        "LlddllllLLlllldL",
+        ".LlddlllLLllldl.",
+        ".LllddllLLllldL.",
+        "..LLlddllLLllL..",
+        "...LLlddllLLL...",
+        "....LLllLLLL....",
+        ".......TtT......",
+        ".......TtT......",
+        ".......tTT......",
+        ".......TtT......",
+        ".......TTt......",
+        ".......TtT......",
+        ".......TtT......",
+        "......TTtTT.....",
+        "......TTtTT.....",
+        ".....TTTtTTT...."
+      ]
+    ]
+  },
+  "house": {
+    "w": 32,
+    "h": 24,
+    "palette": {
+      "R": "#6b3a2a",
+      "r": "#8a4a32",
+      "W": "#c8b89a",
+      "w": "#a89a7a",
+      "D": "#5a3a22",
+      "d": "#3a2412",
+      "Y": "#ffd76a",
+      "F": "#4a3a2a",
+      "C": "#7a4a3a",
+      "G": "#6a5a4a",
+      "H": "#2e2a24"
+    },
+    "frames": [
+      [
+        "..............RRRR..............",
+        "............RrRrRrRr............",
+        "..........RrRrRrRrRrRr.CCC......",
+        "........RrRrRrRrRrRrRrRCCC......",
+        "......RrRrRrRrRrRrRrRrRCCC......",
+        "....RrRrRrRrRrRrRrRrRrRCCCRr....",
+        "...RrRrRrRrRrRrRrRrRrRrCCCRrR...",
+        "..RrRrRrRrRrRrRrRrRrRrRrRrRrRr..",
+        "...WWWWWWWWWWWWWWWWWWWWWWWwww...",
+        "...WWWWWWWWWWWWWWWWWWWWWWWwww...",
+        "...WWWWWWWWWWWWWWWWWWWWWWWwww...",
+        "...WWWWWWWWWWWWWWWWWWWWWWWwww...",
+        "...WWWFFFFWWWWWWWWWWWWFFFFwww...",
+        "...WWWFYYFWWWWWWWWWWWWFYYFwww...",
+        "...WWWFYYFWWWWDDDDWWWWFYYFwww...",
+        "...WWWFYYFWWWWDddDWWWWFYYFwww...",
+        "...WWWFFFFWWWWDddDWWWWFFFFwww...",
+        "...WWWWWWWWWWWDdHDWWWWWWWWwww...",
+        "...WWWWWWWWWWWDddDWWWWWWWWwww...",
+        "...WWWWWWWWWWWDddDWWWWWWWWwww...",
+        "...WWWWWWWWWWWDddDWWWWWWWWwww...",
+        "...WWWWWWWWWWWDddDWWWWWWWWwww...",
+        "...GGGGGGGGGGGGGGGGGGGGGGGGGG...",
+        "................................"
+      ]
+    ]
+  },
+  "bench": {
+    "w": 20,
+    "h": 8,
+    "palette": {
+      "W": "#8a6a42",
+      "w": "#6b4a2a",
+      "M": "#3a3a3a"
+    },
+    "frames": [
+      [
+        "..WwWwWwWwWwWwWwWw..",
+        "..W..............W..",
+        "..wWwWwWwWwWwWwWwW..",
+        "..W..............W..",
+        ".WwWwWwWwWwWwWwWwWw.",
+        ".MM..............MM.",
+        ".MM..............MM.",
+        "MMMM............MMMM"
+      ]
+    ]
+  },
+  "bed": {
+    "w": 20,
+    "h": 10,
+    "palette": {
+      "F": "#6b4a2a",
+      "f": "#4a2f1a",
+      "M": "#d8d0c0",
+      "m": "#b8b0a0",
+      "P": "#f0e8d8",
+      "B": "#4a6a3a",
+      "b": "#33501f"
+    },
+    "frames": [
+      [
+        ".FF.................",
+        ".FF.................",
+        ".FFPPPP.............",
+        ".FFPPPPMMMBBBBBBBBFF",
+        ".FFMMMMMMMBBBBBBBBFF",
+        ".FFmmmmmmmbbbbbbbbFF",
+        ".FFFFFFFFFbbbbbbbbFF",
+        "..ff............ff..",
+        "..ff............ff..",
+        ".ffff..........ffff."
+      ]
+    ]
+  }
+};
+  /*__SPRITES_OBJECTS__*/
+  function drawSprite(name, frame, x, y, flip) {
+    var s = SPRITES[name];
+    if (!s) return;
+    var rows = s.frames[frame % s.frames.length];
+    var px = 2;
     ctx.save();
-    if (o.flip) { ctx.translate(x + 14, y); ctx.scale(-1, 1); ctx.translate(-x, -y); }
-    // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(x + 2, y + 20, 10, 3);
-    // legs
-    ctx.fillStyle = o.pants || '#2b3a55';
-    ctx.fillRect(x + 3, y + 15, 3, 5 + (legSwing < 0 ? 1 : 0));
-    ctx.fillRect(x + 8, y + 15, 3, 5 + (legSwing > 0 ? 1 : 0));
-    // boots
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(x + 2, y + 19 + (legSwing < 0 ? 1 : 0), 5, 2);
-    ctx.fillRect(x + 7, y + 19 + (legSwing > 0 ? 1 : 0), 5, 2);
-    // body
-    ctx.fillStyle = o.shirt || '#2f6fb2';
-    ctx.fillRect(x + 2, y + 8, 10, 8);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(x + 2, y + 8, 10, 2);
-    // arms
-    ctx.fillStyle = o.shirt || '#2f6fb2';
-    ctx.fillRect(x + 0, y + 9, 2, 6);
-    ctx.fillRect(x + 12, y + 9, 2, 6);
-    // head
-    ctx.fillStyle = o.skin || '#e8b98a';
-    ctx.fillRect(x + 3, y, 8, 8);
-    // eyes
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(x + 5, y + 3, 1, 2);
-    ctx.fillRect(x + 8, y + 3, 1, 2);
-    // hair or cap
-    if (o.cap) {
-      ctx.fillStyle = o.cap;
-      ctx.fillRect(x + 3, y - 1, 8, 3);
-      ctx.fillRect(x + 3, y + 1, 10, 1);
-    } else {
-      ctx.fillStyle = o.hair || '#3a2a1a';
-      ctx.fillRect(x + 3, y, 8, 3);
-      ctx.fillRect(x + 3, y + 3, 2, 2);
+    if (flip) { ctx.translate(x + s.w * px, y); ctx.scale(-1, 1); ctx.translate(-x, -y); }
+    for (var r = 0; r < rows.length; r++) {
+      var row = rows[r];
+      for (var c = 0; c < row.length; c++) {
+        var ch = row[c];
+        if (ch === '.' || ch === ' ') continue;
+        var col = s.palette[ch];
+        if (!col) continue;
+        ctx.fillStyle = col;
+        ctx.fillRect(x + c * px, y + r * px, px, px);
+      }
     }
     ctx.restore();
   }
-  function drawDoor(d, t) {
+  function drawCharAt(name, frame, cx, cy, flip) {
+    var s = SPRITES[name];
+    if (!s) return;
+    drawSprite(name, frame, Math.round(cx - s.w), Math.round(cy - s.h), flip);
+  }
+  function drawDoorSprite(d, t) {
     var pulse = 0.18 + 0.08 * Math.sin(t / 300);
     ctx.fillStyle = 'rgba(255,215,106,' + pulse + ')';
     ctx.fillRect(d.x - 10, d.y - 10, d.w + 20, d.h + 20);
-    ctx.fillStyle = '#8a6d1b';
-    ctx.fillRect(d.x - 2, d.y - 4, d.w + 4, d.h + 4);
-    ctx.fillStyle = '#ffd76a';
-    ctx.fillRect(d.x, d.y, d.w, d.h);
-    ctx.fillStyle = '#fff3c4';
-    ctx.fillRect(d.x + 6, d.y + 6, d.w - 12, d.h - 12);
-    ctx.fillStyle = '#8a6d1b';
-    ctx.fillRect(d.x + d.w - 11, d.y + d.h / 2, 3, 3);
+    if (SPRITES.door) {
+      drawSprite('door', 0, d.x - 4, d.y - 8);
+    } else {
+      ctx.fillStyle = '#ffd76a';
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.fillStyle = '#fff3c4';
+      ctx.fillRect(d.x + 6, d.y + 6, d.w - 12, d.h - 12);
+    }
     if (d.barred) {
       ctx.fillStyle = '#6b4a2a';
       ctx.fillRect(d.x - 4, d.y + d.h / 2 - 14, d.w + 8, 6);
@@ -238,939 +981,966 @@
     } else if (item === 'phone') {
       ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x + 1, y + bob, 8, 12);
       ctx.fillStyle = '#7fb3e8'; ctx.fillRect(x + 2, y + bob + 1, 6, 8);
+    } else if (item === 'memory') {
+      var glow = 0.5 + 0.3 * Math.sin(t / 200);
+      ctx.fillStyle = 'rgba(255,215,106,' + glow + ')';
+      ctx.fillRect(x - 3, y + bob - 3, 16, 18);
+      ctx.fillStyle = '#f2ede0'; ctx.fillRect(x, y + bob, 10, 12);
+      ctx.fillStyle = '#3a4a6b'; ctx.fillRect(x + 2, y + bob + 2, 6, 1); ctx.fillRect(x + 2, y + bob + 5, 6, 1); ctx.fillRect(x + 2, y + bob + 8, 4, 1);
     }
+  }
+  /* ---- textured tiles (deterministic speckle, no flat color) ---- */
+  function hash2(x, y) { var h = (x * 374761393 + y * 668265263) ^ 0; h = (h ^ (h >> 13)) * 1274126177; return ((h ^ (h >> 16)) >>> 0) / 4294967295; }
+  function fillTextured(x, y, w, h, base, dark, light, tile) {
+    ctx.fillStyle = base; ctx.fillRect(x, y, w, h);
+    var ts = tile || 8;
+    for (var yy = y; yy < y + h; yy += ts) {
+      for (var xx = x; xx < x + w; xx += ts) {
+        var r = hash2(xx, yy);
+        if (r < 0.28) { ctx.fillStyle = dark; ctx.fillRect(xx, yy, ts, ts); }
+        else if (r > 0.86) { ctx.fillStyle = light; ctx.fillRect(xx, yy, ts, ts); }
+      }
+    }
+  }
+  function drawBrickWall(x, y, w, h) {
+    ctx.fillStyle = '#6b4a3a'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#7a5a48';
+    for (var row = y; row < y + h; row += 12) {
+      for (var col = x + ((row / 12) % 2 ? 10 : 0); col < x + w; col += 20) {
+        ctx.fillRect(col, row, 18, 10);
+      }
+      ctx.fillStyle = '#5a3a2a'; ctx.fillRect(x, row + 10, w, 2);
+      ctx.fillStyle = '#7a5a48';
+    }
+  }
+  function drawWoodFloor(x, y, w, h) {
+    ctx.fillStyle = '#8a6f5c'; ctx.fillRect(x, y, w, h);
+    for (var pl = 0; pl < h; pl += 14) {
+      ctx.fillStyle = (pl / 14) % 2 ? '#7d6248' : '#8a6f5c';
+      ctx.fillRect(x, y + pl, w, 13);
+      ctx.fillStyle = '#5a4632'; ctx.fillRect(x, y + pl + 13, w, 1);
+    }
+  }
+  function drawGrass(x, y, w, h) {
+    fillTextured(x, y, w, h, '#5a8a4a', '#4a7a3a', '#6a9a52', 6);
+    ctx.fillStyle = '#3f7d4e';
+    for (var i = 0; i < (w * h) / 900; i++) {
+      var gx = x + Math.floor(hash2(i, 7) * w), gy = y + Math.floor(hash2(3, i) * h);
+      ctx.fillRect(gx, gy, 2, 4);
+    }
+  }
+  function drawSand(x, y, w, h) {
+    fillTextured(x, y, w, h, '#d9c08a', '#c9ae72', '#e8d5a8', 6);
+  }
+  function drawStreet(x, y, w, h) {
+    fillTextured(x, y, w, h, '#2a2f3a', '#232833', '#3a4152', 8);
   }
 
   /* ================= game state ================= */
-  var keys = {};
-  var state = 'title'; // title | play | dialogue | choice | transition | gameover | ending
+  var state = 'title'; // title | play | talk | choice | transition | ending | gameover
   var sceneIndex = 0;
-  var inventory = []; // 'phone','blanket','food','water'
+  var hope = 3, maxHope = 3;
+  var stamina = 100, staminaLock = false;
+  var belonging = 20;
+  var inventory = [];
   var flags = {};
-  var hope = 3, hopeMax = 3;
-  var stamina = 100, staminaMax = 100;
-  var belonging = 20; // 0..100
-  var dialogue = null;
-  var choice = null;
-  var trans = null; // {text, news, next}
-  var finalLine = '', endingTitle = '', endingBody = '';
+  var step = 0; // objective step within the scene
+  var shakeT = 0, shakeMag = 0;
   var particles = [];
-  var shake = 0;
-  var invuln = 0; // seconds of invulnerability after being caught
-  var time = 0; // global clock (ms)
-  var restUsed = {}; // sceneIndex -> true
-
-  var player = { x: 50, y: 300, w: 14, h: 22, speed: 2.4, moving: false, flip: false, frame: 0, frameTimer: 0 };
+  var player = { x: 50, y: 300, w: 14, h: 20, vx: 0, vy: 0, dir: 1, moving: false, walkT: 0, inv: 0 };
+  var keys = {};
+  var dialog = null; // {lines, idx, onDone}
+  var choice = null; // {prompt, opts:[{label,onPick}]}
+  var transition = null; // {to, news, t}
+  var ending = null;
+  var nearTarget = null; // {type, ref, label}
+  var msg = null; // {text, t}
+  var memCount = 0;
 
   function has(item) { return inventory.indexOf(item) !== -1; }
-  function give(item) { if (!has(item)) inventory.push(item); }
-  function take(item) { var i = inventory.indexOf(item); if (i !== -1) inventory.splice(i, 1); }
-  function itemLabel(item) {
-    return item === 'phone' ? 'phone number' : item === 'blanket' ? 'blanket' :
-           item === 'food' ? 'food' : item === 'water' ? 'water' : item;
-  }
-  function gainHope(n, why) {
-    var before = hope;
-    hope = clamp(hope + n, 0, hopeMax);
-    if (hope > before) { AudioSys.sfx('hope'); spawnParticles(player.x + 7, player.y, '#ffd76a', 10); }
-  }
+  function take(item) { if (!has(item)) inventory.push(item); }
+  function gainHope(n) { hope = clamp(hope + n, 0, maxHope); }
   function loseHope(n) {
-    hope = clamp(hope - n, 0, hopeMax);
-    shake = 8;
+    hope = clamp(hope - n, 0, maxHope);
+    shakeT = 0.4; shakeMag = 6;
     AudioSys.sfx('caught');
-    spawnParticles(player.x + 7, player.y + 10, '#c0392b', 14);
     if (hope <= 0) { state = 'gameover'; }
+    else { respawn(); }
   }
-  function spawnParticles(x, y, color, n) {
-    for (var i = 0; i < (n || 8); i++) {
-      particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 2.4, vy: -Math.random() * 2 - 0.5,
-        life: 0.5 + Math.random() * 0.4, max: 0.9, color: color, size: 2 + Math.random() * 2 });
+  function respawn() {
+    var s = SCENES[sceneIndex];
+    player.x = s.start.x; player.y = s.start.y;
+    player.inv = 2;
+  }
+  function showMsg(text) { msg = { text: text, t: 2.2 }; }
+  function burst(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
+      particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 90, vy: -Math.random() * 70 - 10, life: 0.6 + Math.random() * 0.3, color: color, size: 2 + Math.random() * 2 });
     }
   }
-
-  /* ================= dialogue & choice ================= */
   function startDialogue(lines, onDone) {
-    dialogue = { lines: lines, i: 0, onDone: onDone || null };
-    state = 'dialogue';
+    dialog = { lines: lines, idx: 0, onDone: onDone || null };
+    state = 'talk';
     AudioSys.sfx('talk');
   }
   function advanceDialogue() {
-    if (!dialogue) return;
-    dialogue.i++;
-    if (dialogue.i >= dialogue.lines.length) {
-      var done = dialogue.onDone;
-      dialogue = null;
+    if (!dialog) return;
+    dialog.idx++;
+    AudioSys.sfx('talk');
+    if (dialog.idx >= dialog.lines.length) {
+      var cb = dialog.onDone;
+      dialog = null;
       state = 'play';
-      if (done) done();
-    } else { AudioSys.sfx('talk'); }
+      if (cb) cb();
+    }
   }
-  function startChoice(prompt, options) {
-    choice = { prompt: prompt, options: options, selected: 0 };
+  function showChoice(prompt, opts) {
+    choice = { prompt: prompt, opts: opts, sel: 0 };
     state = 'choice';
     AudioSys.sfx('choice');
   }
-  function pickChoice() {
+  function pickChoice(i) {
     if (!choice) return;
-    var opt = choice.options[choice.selected];
+    var o = choice.opts[i];
     choice = null;
     state = 'play';
-    if (opt && opt.onPick) opt.onPick();
+    if (o && o.onPick) o.onPick();
+  }
+  function advanceStep() { step++; updateObjectiveLabel(); }
+  function updateObjectiveLabel() {
+    var s = SCENES[sceneIndex];
+    var el = document.getElementById('obj-label');
+    if (el && s.objectives[step]) el.textContent = 'GOAL: ' + s.objectives[step];
+  }
+  function goToScene(i) {
+    sceneIndex = i;
+    step = 0;
+    var s = SCENES[i];
+    player.x = s.start.x; player.y = s.start.y;
+    player.inv = 0;
+    s.patrols.forEach(function (p) { p.x = p.wps[0].x; p.y = p.wps[0].y; p.wp = 0; p.mode = 'patrol'; });
+    if (s.marchers) s.marchers.forEach(function (m) { m.x = m.startX; });
+    AudioSys.setMood(s.mood);
+    updateObjectiveLabel();
+  }
+  function startTransition(news, to) {
+    transition = { news: news, to: to, t: 0 };
+    state = 'transition';
+    AudioSys.sfx('door');
+  }
+  function resetGame() {
+    hope = maxHope; stamina = 100; staminaLock = false;
+    belonging = 20; inventory = []; flags = {}; memCount = 0;
+    particles = []; dialog = null; choice = null; transition = null; ending = null; msg = null;
+    SCENES.forEach(function (s) {
+      s.items.forEach(function (it) { it.taken = false; });
+      s.memories.forEach(function (m) { m.taken = false; });
+      if (s.rests) s.rests.forEach(function (r) { r.used = false; });
+      if (s.npcs) s.npcs.forEach(function (n) { n.done = false; });
+      if (s.patrols) s.patrols.forEach(function (p) { p.x = p.wps[0].x; p.y = p.wps[0].y; p.wp = 0; p.mode = 'patrol'; });
+      if (s.marchers) s.marchers.forEach(function (m) { m.x = m.startX; });
+    });
+    sceneIndex = 0; step = 0;
+    player.x = SCENES[0].start.x; player.y = SCENES[0].start.y; player.inv = 0;
+    state = 'title';
+    AudioSys.setMood('city');
+    updateObjectiveLabel();
   }
 
   /* ================= scenes ================= */
-  // News / present-day context lines shown when travelling through a door.
-  var NEWS = {
-    toMykonos: 'TODAY: MORE PEOPLE ARE DISPLACED FROM THEIR HOMES THAN AT ANY POINT IN RECORDED HISTORY.',
-    toLondon: 'TODAY: REFUGEE CAMPS GROW, WHILE WAITS FOR ASYLUM STRETCH INTO YEARS.',
-    toMarin: 'TODAY: IN MANY COUNTRIES, LEADERS PROMISE TO "TAKE BACK" STREETS AND BORDERS FROM NEWCOMERS.'
-  };
-
-  var scenes = [
+  function P(x, y, wps, def, sprite) {
+    return { x: x, y: y, wps: wps, wp: 0, def: def, mode: 'patrol', sprite: sprite || 'soldier', walkT: 0, dir: 1 };
+  }
+  var SCENES = [
     {
-      name: 'THE CITY', sub: 'IT IS NO LONGER SAFE HERE',
-      objective: 'TALK TO YOUR NEIGHBOR, THEN REACH THE DOOR.',
+      name: 'THE CITY — EVENING CLASS', mood: 'city',
+      sky: ['#2a1e3a', '#4a2a3a'], ground: 'street',
+      intro: 'The city. Dusk. You can hear the shooting, two streets over. The evening class is starting.',
       start: { x: 50, y: 300 },
+      objectives: ['REACH THE EVENING CLASS.', 'TALK TO NADIA.', 'GET PAST THE CHECKPOINT.', 'REACH THE DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 90, h: 200 }, { x: 100, y: 40, w: 110, h: 200 },
-        { x: 220, y: 40, w: 80, h: 200 }, { x: 310, y: 40, w: 120, h: 200 },
-        { x: 440, y: 40, w: 90, h: 200 }, { x: 540, y: 40, w: 100, h: 200 }
+        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
+        { x: 140, y: 40, w: 120, h: 50 }, // class building
+        { x: 460, y: 40, w: 100, h: 50 }, // Nadia's building
+        { x: 420, y: 60, w: 10, h: 100 }, // checkpoint wall, upper
+        { x: 420, y: 220, w: 10, h: 110 }  // checkpoint wall, lower (gap y 160-220)
       ],
-      door: { x: 590, y: 250, w: 36, h: 70, to: 1,
-        locked: function () { return !flags.neighbor; },
-        lockedMsg: 'Talk to your neighbor first. The city is changing, and you need to hear it.',
-        text: 'YOU STEP THROUGH. THERE IS NO JOURNEY. ONLY THE OTHER SIDE.',
-        news: NEWS.toMykonos },
-      npcs: [{ x: 320, y: 290, label: 'NEIGHBOR', r: 48, shirt: '#3f7d4e',
-        lines: [
-          { who: 'NEIGHBOR', text: 'The city is not safe anymore. They say there are doors now.' },
-          { who: 'NEIGHBOR', text: 'Doors that take you somewhere else. Nobody knows if they are real. But people are leaving.' },
-          { who: 'NEIGHBOR', text: 'Take this number. Someone in London. If you go, call them.' }
-        ],
-        onDone: function () { flags.neighbor = true; give('phone'); } }],
-      pickups: [],
-      patrolDefs: [{ x: 150, y: 262, wps: [{ x: 150, y: 262 }, { x: 500, y: 262 }], speed: 0.9, label: 'SOLDIER' }],
-      rest: { x: 140, y: 330, label: 'BENCH', msg: 'You sit for a moment. The street is quiet. You breathe.' },
-      draw: function (t) {
-        ctx.fillStyle = '#141a2b'; ctx.fillRect(0, 0, W, H);
-        // moon
-        ctx.fillStyle = '#e8ecf3'; ctx.fillRect(520, 16, 14, 14);
-        ctx.fillStyle = '#141a2b'; ctx.fillRect(526, 14, 12, 12);
-        // buildings
-        var b = [[0, 90, 90, 150], [100, 60, 110, 180], [220, 100, 80, 140], [310, 70, 120, 170], [440, 110, 90, 130], [540, 80, 100, 160]];
-        for (var i = 0; i < b.length; i++) {
-          ctx.fillStyle = '#1e2436'; ctx.fillRect(b[i][0], b[i][1], b[i][2], b[i][3]);
-          ctx.fillStyle = '#12172a'; ctx.fillRect(b[i][0], b[i][1], b[i][2], 4);
-        }
-        ctx.fillStyle = '#ffd76a';
-        var wins = [[20, 120, 10, 12], [130, 90, 10, 12], [160, 140, 10, 12], [250, 130, 10, 12], [340, 100, 10, 12], [380, 150, 10, 12], [470, 140, 10, 12], [570, 110, 10, 12]];
-        for (var j = 0; j < wins.length; j++) ctx.fillRect(wins[j][0], wins[j][1], wins[j][2], wins[j][3]);
-        // street
-        ctx.fillStyle = '#2a2f3a'; ctx.fillRect(0, 240, W, 120);
-        ctx.fillStyle = '#3a4152'; ctx.fillRect(0, 240, W, 4);
-        ctx.fillStyle = '#c8b25a';
-        for (var d = 0; d < 8; d++) ctx.fillRect(20 + d * 80, 296, 34, 4);
-        // bench (rest spot)
-        ctx.fillStyle = '#6b4a2a'; ctx.fillRect(128, 322, 36, 6); ctx.fillRect(130, 328, 4, 8); ctx.fillRect(158, 328, 4, 8);
-        drawDoor(this.door, t);
-        drawChar(this.npcs[0].x, this.npcs[0].y, { shirt: '#3f7d4e', frame: 0 });
-        drawPlayer();
-      }
+      doors: [{ x: 590, y: 120, w: 36, h: 56, locked: function () { return step < 3; }, to: 1,
+        news: 'TODAY: MORE PEOPLE ARE DISPLACED FROM THEIR HOMES THAN AT ANY POINT IN RECORDED HISTORY.' }],
+      npcs: [
+        { id: 'nadia', x: 200, y: 120, sprite: 'nadia', name: 'NADIA', done: false,
+          interact: function () {
+            if (!flags.nadiaMet) { startDialogue(["You're Saeed. From the class. You always sit in the back.", "It's not safe to walk alone after dark anymore. Come on. My place isn't far, but we have to be quick, and if anyone stops us, let me do the talking.", "Here. My number. And there's someone in London, if we get there. A friend of a friend. Call them."], function () {
+              flags.nadiaMet = true; take('phone'); AudioSys.sfx('hope'); showMsg('GOT NADIA\'S NUMBER.');
+            }); }
+            else startDialogue(["The checkpoint's at the end of the street. Wait for the soldier to turn, then go. Don't run unless you have to."]);
+          } },
+        { id: 'neighbor', x: 90, y: 280, sprite: 'local', name: 'NEIGHBOR', done: false,
+          interact: function () {
+            startDialogue(["You're still going to the class? ... Listen. The shooting was on our street last night. Two blocks over.", "They say there's a door, down by the old market. People walk through it and they're just... gone. Somewhere else. I don't know if it's real. But my cousin's gone, so. Maybe it is."]);
+          } }
+      ],
+      items: [],
+      memories: [
+        { id: 'm1', x: 150, y: 150, taken: false, text: 'The evening class. Thirty of us, squeezed into a room that smelled like chalk and old tea. Nadia sat by the window. She was the only one who never looked at her phone.' },
+        { id: 'm2', x: 520, y: 280, taken: false, text: 'The walk home. Nadia said, if anyone stops us, let me do the talking. She said it like she\'d done it before. She had.' }
+      ],
+      patrols: [
+        P(420, 150, [{ x: 420, y: 150 }, { x: 420, y: 230 }], { speed: 0.7, detect: 50, chase: 1.2 }, 'soldier'),
+        P(480, 150, [{ x: 480, y: 150 }, { x: 540, y: 150 }, { x: 540, y: 260 }, { x: 480, y: 260 }], { speed: 0.9, detect: 50, chase: 1.2 }, 'soldier')
+      ],
+      rests: [{ x: 70, y: 200, used: false, label: 'REST ON THE STOOP' }]
     },
     {
-      name: 'MYKONOS — A CAMP', sub: 'A WAITING PLACE, NOT A HOME',
-      objective: 'TAKE THE BLANKET. FOOD AND WATER HELP. THEN REACH THE DOOR.',
+      name: 'MYKONOS — A CAMP', mood: 'camp',
+      sky: ['#1a2a4a', '#2a4a6a'], ground: 'sand',
+      intro: 'Mykonos. A camp by the sea. Hundreds of people, waiting for a door.',
       start: { x: 50, y: 300 },
-      walls: [],
-      door: { x: 590, y: 250, w: 36, h: 70, to: 2,
-        locked: function () { return !flags.blanket; },
-        lockedMsg: 'Take the blanket first. Nights here are cold.',
-        text: 'LONDON. A HOUSE FULL OF STRANGERS WHO ARE NOT STRANGERS.',
-        news: NEWS.toLondon },
+      objectives: ['FIND A BLANKET.', 'FIND FOOD AND WATER.', 'HELP SOMEONE, OR KEEP MOVING.', 'REACH THE DOOR.'],
+      walls: [
+        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
+        { x: 200, y: 180, w: 60, h: 40 }, { x: 400, y: 120, w: 60, h: 40 } // tents (blocks)
+      ],
+      doors: [{ x: 590, y: 140, w: 36, h: 56, locked: function () { return !(has('blanket') && has('water') && (has('food') || flags.migrantHelped)); }, to: 2,
+        news: 'TODAY: REFUGEE CAMPS GROW, WHILE WAITS FOR ASYLUM STRETCH INTO YEARS.' }],
       npcs: [
-        { x: 300, y: 270, label: 'CAMP WORKER', r: 48, shirt: '#a85a2a',
-          lines: [
-            { who: 'CAMP WORKER', text: 'This is a waiting place, not a home. Hundreds of us, and the boats keep coming.' },
-            { who: 'CAMP WORKER', text: 'The world calls us a crisis. We are just people, waiting for a door.' }
-          ],
-          onDone: function () { flags.worker = true; } },
-        { x: 420, y: 320, label: 'FELLOW MIGRANT', r: 48, shirt: '#7d4a8a',
-          lines: [
-            { who: 'FELLOW MIGRANT', text: 'I have not eaten since yesterday. The line for food is hours long.' }
-          ],
-          onDone: function () {
-            if (has('food')) {
-              startChoice('Share your food with them?', [
+        { id: 'worker', x: 280, y: 260, sprite: 'worker', name: 'CAMP WORKER', done: false,
+          interact: function () {
+            startDialogue(["Another boat came in this morning. We put them in the tents by the fence. There's no room, but what are we supposed to do, turn them back to the sea?", "You need a blanket, food, water. Take what you need. There's a door, at the end of the camp. When you're ready."]);
+          } },
+        { id: 'migrant', x: 420, y: 200, sprite: 'migrant', name: 'A FELLOW MIGRANT', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["Thank you. Really. I won't forget it."]); return; }
+            if (!has('food')) { startDialogue(["I haven't eaten since yesterday. The line's three hours long and they run out by noon."]); return; }
+            var self = this;
+            startDialogue(["You have food? ... No, no. I can't ask. ... Well. If you're offering."], function () {
+              showChoice('SHARE YOUR FOOD?', [
                 { label: 'SHARE THE FOOD', onPick: function () {
-                  take('food'); belonging = clamp(belonging + 15, 0, 100); gainHope(1);
-                  startDialogue([{ who: '', text: 'You share the food. They eat slowly, like it might disappear. "Thank you," they say. "Maybe we will both make it."' }]);
+                  take('food'); inventory.splice(inventory.indexOf('food'), 1);
+                  belonging = clamp(belonging + 15, 0, 100); gainHope(1); self.done = true; flags.migrantHelped = true;
+                  AudioSys.sfx('hope'); burst(420, 200, '#ffd76a', 10);
+                  startDialogue(["Thank you. Thank you. You didn't have to do that."]);
+                  if (step === 2) advanceStep();
                 } },
                 { label: 'KEEP IT', onPick: function () {
                   belonging = clamp(belonging - 5, 0, 100);
-                  startDialogue([{ who: '', text: 'You keep the food. You are fed. They are still hungry. The camp is the same size it was.' }]);
+                  startDialogue(["No. I understand. Everyone's holding on to what they've got."]);
+                  if (step === 2) advanceStep();
                 } }
               ]);
-            } else {
-              startDialogue([{ who: '', text: 'You have no food to share. They nod. They understand. That is the worst part.' }]);
-            }
+            });
           } }
       ],
-      pickups: [
-        { x: 463, y: 306, r: 48, item: 'blanket', label: 'A BLANKET',
-          lines: [{ who: '', text: 'You take a blanket. It is thin, but it is yours. Added to what you carry.' }],
-          onDone: function () { flags.blanket = true; give('blanket'); } },
-        { x: 180, y: 310, r: 48, item: 'food', label: 'FOOD',
-          lines: [{ who: '', text: 'You take a packet of food. Added to what you carry.' }],
-          onDone: function () { give('food'); } },
-        { x: 540, y: 280, r: 48, item: 'water', label: 'WATER',
-          lines: [{ who: '', text: 'You take a bottle of water. Added to what you carry.' }],
-          onDone: function () { give('water'); } }
+      items: [
+        { id: 'blanket', x: 460, y: 300, type: 'blanket', taken: false, onTake: function () { take('blanket'); showMsg('GOT A BLANKET.'); if (step === 0) advanceStep(); } },
+        { id: 'food', x: 170, y: 300, type: 'food', taken: false, onTake: function () { take('food'); showMsg('GOT FOOD.'); if (has('food') && has('water') && step === 1) advanceStep(); } },
+        { id: 'water', x: 300, y: 140, type: 'water', taken: false, onTake: function () { take('water'); showMsg('GOT WATER.'); if (has('food') && has('water') && step === 1) advanceStep(); } }
       ],
-      patrolDefs: [
-        { x: 200, y: 240, wps: [{ x: 200, y: 240 }, { x: 450, y: 240 }], speed: 0.8, label: 'GUARD' },
-        { x: 100, y: 180, wps: [{ x: 100, y: 180 }, { x: 350, y: 180 }], speed: 0.7, label: 'GUARD' }
+      memories: [
+        { id: 'm1', x: 100, y: 120, taken: false, text: 'The boats come in the morning. People climb out soaking wet and someone hands them a blanket, like that\'s the whole story. It isn\'t.' },
+        { id: 'm2', x: 540, y: 300, taken: false, text: 'Nobody lives here. We just wait here. Days turn into weeks. Someone\'s always leaving, and someone\'s always arriving, and the camp just stays.' }
       ],
-      rest: { x: 90, y: 180, label: 'REST TENT', msg: 'You rest inside a tent. For a moment, no one is watching.' },
-      draw: function (t) {
-        ctx.fillStyle = '#bcd8e8'; ctx.fillRect(0, 0, W, 120);
-        ctx.fillStyle = '#7fb3d5'; ctx.fillRect(0, 100, W, 20);
-        ctx.fillStyle = '#d9c08a'; ctx.fillRect(0, 120, W, 240);
-        ctx.fillStyle = '#c9ae72';
-        for (var s = 0; s < 20; s++) ctx.fillRect((s * 67) % W, 130 + ((s * 37) % 200), 3, 3);
-        // tents
-        var tents = [[60, 200], [150, 230], [260, 200], [360, 230], [470, 200]];
-        for (var i = 0; i < tents.length; i++) {
-          var tx = tents[i][0], ty = tents[i][1];
-          ctx.fillStyle = '#e8e0c8';
-          ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx + 25, ty - 34); ctx.lineTo(tx + 50, ty); ctx.closePath(); ctx.fill();
-          ctx.fillStyle = '#c0392b'; ctx.fillRect(tx + 22, ty - 34, 6, 6);
-          ctx.fillStyle = '#8a7a52'; ctx.fillRect(tx, ty, 50, 3);
-        }
-        // rest tent (bigger, marked)
-        ctx.fillStyle = '#3f7d4e';
-        ctx.beginPath(); ctx.moveTo(70, 200); ctx.lineTo(95, 160); ctx.lineTo(120, 200); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#e8ecf3'; ctx.fillRect(92, 182, 6, 10);
-        // fence
-        ctx.fillStyle = '#6b5a3a';
-        for (var f = 0; f < 12; f++) ctx.fillRect(10 + f * 14, 150, 4, 40);
-        ctx.fillRect(0, 160, 180, 4);
-        // pickups
-        for (var p = 0; p < this.pickups.length; p++) {
-          var pk = this.pickups[p];
-          if (!pk.done) drawItemIcon(pk.x - 5, pk.y - 5, pk.item, t);
-        }
-        drawDoor(this.door, t);
-        drawChar(this.npcs[0].x, this.npcs[0].y, { shirt: '#a85a2a', frame: 0 });
-        drawChar(this.npcs[1].x, this.npcs[1].y, { shirt: '#7d4a8a', frame: 0 });
-        drawPlayer();
-      }
+      patrols: [
+        P(150, 240, [{ x: 150, y: 240 }, { x: 500, y: 240 }], { speed: 0.8, detect: 55, chase: 1.15 }, 'guard'),
+        P(350, 120, [{ x: 350, y: 120 }, { x: 350, y: 300 }], { speed: 0.8, detect: 55, chase: 1.15 }, 'guard')
+      ],
+      rests: [{ x: 100, y: 300, used: false, label: 'REST IN THE TENT' }]
     },
     {
-      name: 'LONDON — A SHARED HOUSE', sub: 'THE DOOR BROUGHT US HERE. IT DID NOT MAKE US WELCOME.',
-      objective: 'HELP THE HOUSEMATE TO OPEN THE BACK DOOR — OR SNEAK PAST THE PATROL TO THE FRONT DOOR.',
+      name: 'LONDON — A SHARED HOUSE', mood: 'london',
+      sky: ['#1a1a2a', '#3a2a3a'], ground: 'house',
+      intro: 'London. A house full of strangers who are not strangers.',
       start: { x: 60, y: 280 },
+      objectives: ['TALK TO YOUR HOUSEMATE.', 'SHARE SOMETHING, OR SNEAK PAST.', 'REACH THE DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 250, h: 10 }, { x: 0, y: 40, w: 10, h: 280 },
-        { x: 240, y: 40, w: 10, h: 130 }, { x: 240, y: 220, w: 10, h: 100 },
-        { x: 0, y: 310, w: 250, h: 10 }
+        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
+        { x: 10, y: 40, w: 240, h: 10 }, // house top wall
+        { x: 10, y: 310, w: 240, h: 10 }, // house bottom wall
+        { x: 10, y: 40, w: 10, h: 280 }, // house left wall
+        { x: 240, y: 40, w: 10, h: 220 }, // house right wall, upper (gap y 260-310 = back door)
+        { x: 240, y: 310, w: 10, h: 10 }
       ],
-      door: { x: 590, y: 120, w: 36, h: 70, to: 3,
-        locked: function () { return false; },
-        lockedMsg: '',
-        text: 'MARIN, CALIFORNIA. QUIET. GREEN. FAR FROM EVERYTHING.',
-        news: NEWS.toMarin },
-      barredDoor: { x: 590, y: 280, w: 36, h: 70,
-        msg: 'Barred. Some doors open for some people and not for others.' },
+      doors: [{ x: 590, y: 150, w: 36, h: 56, locked: function () { return step < 1; }, to: 3,
+        news: 'TODAY: IN MANY COUNTRIES, LEADERS PROMISE TO "TAKE BACK" STREETS AND BORDERS FROM NEWCOMERS.' }],
       npcs: [
-        { x: 150, y: 180, label: 'HOUSEMATE', r: 48, shirt: '#7d4a8a',
-          lines: [
-            { who: 'HOUSEMATE', text: 'We share this house — twelve of us. It is crowded, but it is safer than outside.' },
-            { who: 'HOUSEMATE', text: 'Outside, they march and shout that we do not belong. The door brought us here. It did not make us welcome.' }
-          ],
-          onDone: function () {
-            flags.housemate = true;
+        { id: 'housemate', x: 150, y: 180, sprite: 'housemate', name: 'YOUR HOUSEMATE', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["Go on. The back door's clear. And thank you."]); return; }
+            var self = this;
             var opts = [];
             if (has('blanket')) opts.push({ label: 'SHARE THE BLANKET', onPick: function () {
-              take('blanket'); belonging = clamp(belonging + 15, 0, 100); gainHope(1); flags.helped = true;
-              londonPatrolStandDown();
-              startDialogue([{ who: '', text: 'You share the blanket. The housemate wraps it around their shoulders. "Go now," they whisper. "While he is looking the other way. The back door is open."' }]);
+              inventory.splice(inventory.indexOf('blanket'), 1);
+              belonging = clamp(belonging + 15, 0, 100); gainHope(1); flags.helped = true; self.done = true; flags.housemateDone = true;
+              londonStandDown(); AudioSys.sfx('hope'); burst(150, 180, '#ffd76a', 10);
+              startDialogue(["Thank you. Really. Here — I'll keep an eye out. The patrol's gone to the far corner. Use the back door."]);
             } });
             if (has('food')) opts.push({ label: 'SHARE THE FOOD', onPick: function () {
-              take('food'); belonging = clamp(belonging + 15, 0, 100); gainHope(1); flags.helped = true;
-              londonPatrolStandDown();
-              startDialogue([{ who: '', text: 'You share the food. The housemate eats, then points to the back door. "Go now," they whisper. "While he is looking the other way."' }]);
+              inventory.splice(inventory.indexOf('food'), 1);
+              belonging = clamp(belonging + 15, 0, 100); gainHope(1); flags.helped = true; self.done = true; flags.housemateDone = true;
+              londonStandDown(); AudioSys.sfx('hope'); burst(150, 180, '#ffd76a', 10);
+              startDialogue(["Thank you. Really. Here — I'll keep an eye out. The patrol's gone to the far corner. Use the back door."]);
             } });
             opts.push({ label: 'KEEP EVERYTHING', onPick: function () {
-              belonging = clamp(belonging - 10, 0, 100);
-              startDialogue([{ who: '', text: 'You keep everything. The housemate nods, and looks away. The front door is still there — if you can get past the patrol.' }]);
+              belonging = clamp(belonging - 10, 0, 100); self.done = true; flags.housemateDone = true;
+              startDialogue(["No. I understand. Everyone's holding on to what they've got. The front way's the only way out, then. Careful."]);
             } });
-            startChoice('Your housemate is cold and hungry. The patrol is outside.', opts);
-          } },
-        { x: 522, y: 150, label: 'A FLYER', r: 48, shirt: '#c8b25a',
-          lines: [
-            { who: '', text: 'A flyer on the wall: "Take back our streets."' },
-            { who: '', text: 'The same words are on the news, in every country, right now. The doors opened — and some people want them shut.' }
-          ],
-          onDone: function () { flags.flyer = true; } }
+            startDialogue(["Twelve of us in this house. The landlord doesn't know, or pretends not to.", "Outside they shout that we don't belong. We got here through a door. That doesn't mean they want us here.", "You're cold? I'm cold. We're all cold. If you've got a blanket or some food to spare, it would mean something. If not, I understand."], function () {
+              flags.housemateMet = true;
+              showChoice('SHARE SOMETHING?', opts);
+            });
+          } }
       ],
-      pickups: [],
-      patrolDefs: [{ x: 450, y: 90, wps: [{ x: 450, y: 90 }, { x: 450, y: 320 }], speed: 1.0, label: 'NATIVIST' }],
-      rest: { x: 80, y: 250, label: 'A BED', msg: 'You lie down for a moment. The house is crowded, but for once it is quiet.' },
-      draw: function (t) {
-        // house interior (left)
-        ctx.fillStyle = '#6b4a3a'; ctx.fillRect(0, 0, 250, 360);
-        ctx.fillStyle = '#8a6f5c'; ctx.fillRect(10, 50, 230, 260);
-        ctx.fillStyle = '#7a5a48';
-        for (var pl = 0; pl < 8; pl++) ctx.fillRect(10, 60 + pl * 32, 230, 2);
-        // rug
-        ctx.fillStyle = '#a85a2a'; ctx.fillRect(60, 200, 120, 60);
-        ctx.fillStyle = '#c0392b'; ctx.fillRect(66, 206, 108, 48);
-        // window
-        ctx.fillStyle = '#bcd8e8'; ctx.fillRect(60, 70, 70, 60);
-        ctx.fillStyle = '#6b4a3a'; ctx.fillRect(92, 70, 6, 60); ctx.fillRect(60, 96, 70, 6);
-        // table
-        ctx.fillStyle = '#4a3226'; ctx.fillRect(170, 150, 60, 8); ctx.fillRect(176, 158, 5, 26); ctx.fillRect(220, 158, 5, 26);
-        // bed (rest spot)
-        ctx.fillStyle = '#3f7d4e'; ctx.fillRect(30, 250, 60, 22);
-        ctx.fillStyle = '#e8ecf3'; ctx.fillRect(30, 250, 18, 22);
-        // flyer
-        ctx.fillStyle = '#f2ede0'; ctx.fillRect(500, 130, 44, 34);
-        ctx.fillStyle = '#b3261e'; ctx.fillRect(506, 136, 32, 4); ctx.fillRect(506, 144, 24, 3); ctx.fillRect(506, 151, 28, 3);
-        // street (right)
-        ctx.fillStyle = '#2a2f3a'; ctx.fillRect(250, 0, W - 250, H);
-        ctx.fillStyle = '#3a4152'; ctx.fillRect(250, 0, 4, H);
-        ctx.fillStyle = '#c8b25a';
-        for (var d = 0; d < 4; d++) ctx.fillRect(300 + d * 80, 300, 34, 4);
-        // barred door (double standard)
-        var bd = this.barredDoor;
-        ctx.fillStyle = '#3a3a3a'; ctx.fillRect(bd.x, bd.y, bd.w, bd.h);
-        ctx.fillStyle = '#555'; ctx.fillRect(bd.x + 5, bd.y + 5, bd.w - 10, bd.h - 10);
-        ctx.fillStyle = '#6b4a2a';
-        ctx.fillRect(bd.x - 4, bd.y + bd.h / 2 - 14, bd.w + 8, 6);
-        ctx.fillRect(bd.x - 4, bd.y + bd.h / 2 + 6, bd.w + 8, 6);
-        drawDoor(this.door, t);
-        drawChar(this.npcs[0].x, this.npcs[0].y, { shirt: '#7d4a8a', frame: 0 });
-        drawPlayer();
-      }
+      items: [],
+      memories: [
+        { id: 'm1', x: 120, y: 90, taken: false, text: 'The house smells like cooking and damp. Twelve people, one bathroom. Someone\'s always singing in the kitchen. It\'s the closest thing to home since the city.' }
+      ],
+      patrols: [
+        P(450, 90, [{ x: 450, y: 90 }, { x: 450, y: 320 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'nativist'),
+        P(300, 200, [{ x: 300, y: 200 }, { x: 580, y: 200 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'nativist')
+      ],
+      rests: [{ x: 60, y: 280, used: false, label: 'REST ON THE BED' }],
+      flyer: { x: 300, y: 80 }
     },
     {
-      name: 'MARIN, CALIFORNIA', sub: 'QUIET. GREEN. FAR FROM EVERYTHING.',
-      objective: 'CHOOSE WHAT TO CARRY FORWARD.',
+      name: 'LONDON — THE MARCH', mood: 'march',
+      sky: ['#2a1a1a', '#4a2a1a'], ground: 'street',
+      intro: 'London. They\'re marching. Hundreds of them. GO HOME, they shout. You have to get through.',
+      start: { x: 50, y: 300 },
+      objectives: ['GET THROUGH THE MARCH.', 'REACH THE DOOR.'],
+      walls: [
+        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 }
+      ],
+      doors: [{ x: 590, y: 80, w: 36, h: 56, locked: function () { return step < 1; }, to: 4,
+        news: 'TODAY: THE SAME WORDS ARE ON THE NEWS, IN EVERY COUNTRY, RIGHT NOW.' }],
+      npcs: [],
+      items: [],
+      memories: [
+        { id: 'm1', x: 320, y: 200, taken: false, text: 'They march like it\'s a parade. Banners, drums, the whole thing. And the chant is always the same. You learn not to flinch when you hear it. You never really learn.' }
+      ],
+      patrols: [
+        P(540, 120, [{ x: 540, y: 120 }, { x: 540, y: 200 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'nativist')
+      ],
+      marchers: [
+        { startX: 100, y: 120, speed: 50, sprite: 'nativist', x: 100 },
+        { startX: 300, y: 120, speed: 60, sprite: 'nativist', x: 300 },
+        { startX: 500, y: 120, speed: 45, sprite: 'nativist', x: 500 },
+        { startX: 200, y: 200, speed: 55, sprite: 'nativist', x: 200 },
+        { startX: 420, y: 200, speed: 48, sprite: 'nativist', x: 420 },
+        { startX: 80, y: 280, speed: 65, sprite: 'nativist', x: 80 },
+        { startX: 350, y: 280, speed: 52, sprite: 'nativist', x: 350 },
+        { startX: 550, y: 280, speed: 58, sprite: 'nativist', x: 550 }
+      ],
+      rests: []
+    },
+    {
+      name: 'MARIN, CALIFORNIA', mood: 'marin',
+      sky: ['#2a4a3a', '#5a8a5a'], ground: 'grass',
+      intro: 'Marin, California. Quiet. Green. Far from everything.',
       start: { x: 60, y: 300 },
-      walls: [],
-      door: null,
-      npcs: [{ x: 320, y: 280, label: 'A LOCAL', r: 48, shirt: '#c8a24a',
-        lines: [
-          { who: 'A LOCAL', text: 'It is quiet here. People come and go. Some stay.' },
-          { who: 'A LOCAL', text: 'The town does not ask where you came from. It does not ask where you are going, either.' },
-          { who: 'A LOCAL', text: 'So I will ask: what are you carrying forward?' }
-        ],
-        onDone: function () {
-          var opts = [{ label: 'THE PHONE NUMBER', onPick: function () {
-            finalLine = 'You carry the phone number. A voice on the other end is a place to start.';
-            finishGame();
-          } }];
-          if (has('blanket')) opts.push({ label: 'THE BLANKET', onPick: function () {
-            finalLine = 'You carry the blanket. Warmth you can share is the one thing the door could not take.';
-            finishGame();
-          } });
-          opts.push({ label: 'THE MEMORY OF HOME', onPick: function () {
-            finalLine = 'You carry the memory of home. It is the heaviest thing you own, and the only thing no border can hold.';
-            finishGame();
-          } });
-          startChoice('What do you carry forward?', opts);
-        } }],
-      pickups: [],
-      patrolDefs: [],
-      rest: null,
-      draw: function (t) {
-        ctx.fillStyle = '#a8d0e8'; ctx.fillRect(0, 0, W, 150);
-        ctx.fillStyle = '#ffd76a'; ctx.fillRect(560, 30, 34, 34);
-        ctx.fillStyle = '#7fae62'; ctx.fillRect(0, 150, W, 210);
-        ctx.fillStyle = '#6a9a52'; ctx.fillRect(0, 150, W, 40);
-        ctx.fillStyle = '#5a8a4a';
-        for (var h = 0; h < 6; h++) ctx.fillRect((h * 110) % W, 170 + (h % 3) * 8, 60, 10);
-        // house
-        ctx.fillStyle = '#e8dcc8'; ctx.fillRect(480, 190, 90, 70);
-        ctx.fillStyle = '#a85a2a';
-        ctx.beginPath(); ctx.moveTo(472, 190); ctx.lineTo(525, 150); ctx.lineTo(578, 190); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#6b4a3a'; ctx.fillRect(516, 220, 18, 40);
-        ctx.fillStyle = '#bcd8e8'; ctx.fillRect(492, 205, 16, 16); ctx.fillRect(540, 205, 16, 16);
-        // trees
-        var trees = [[80, 220], [160, 200], [380, 220]];
-        for (var i = 0; i < trees.length; i++) {
-          ctx.fillStyle = '#4a7a3a'; ctx.fillRect(trees[i][0] + 8, trees[i][1] - 30, 14, 14);
-          ctx.fillStyle = '#5a8a4a'; ctx.fillRect(trees[i][0] + 2, trees[i][1] - 46, 26, 18);
-          ctx.fillStyle = '#6b4a2a'; ctx.fillRect(trees[i][0] + 12, trees[i][1] - 16, 6, 16);
-        }
-        drawChar(this.npcs[0].x, this.npcs[0].y, { shirt: '#c8a24a', frame: 0 });
-        drawPlayer();
-      }
+      objectives: ['TALK TO THE LOCAL.', 'CHOOSE WHAT TO CARRY.'],
+      walls: [
+        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 }
+      ],
+      doors: [],
+      npcs: [
+        { id: 'local', x: 300, y: 200, sprite: 'local', name: 'A LOCAL', done: false,
+          interact: function () {
+            if (this.done) { startDialogue(["It's quiet here. That's the whole point, I think."]); return; }
+            var self = this;
+            startDialogue(["It's quiet here. People come, people go. Nobody asks where you're from. Nobody asks where you're headed, either.", "You're a long way from home. ... Aren't we all."], function () {
+              self.done = true;
+              advanceStep();
+              showFinalChoice();
+            });
+          } }
+      ],
+      items: [],
+      memories: [
+        { id: 'm1', x: 480, y: 140, taken: false, text: 'Marin. The air smells like eucalyptus and salt. Saeed and Nadia made it here, and then they drifted apart, slowly, like two boats. That\'s in the book too. The door didn\'t fix everything. It just moved them.' }
+      ],
+      patrols: [],
+      rests: [{ x: 120, y: 260, used: false, label: 'REST UNDER THE TREE' }]
     }
   ];
-
-  /* runtime patrols (built fresh on each scene entry) */
-  var patrols = [];
-  function buildPatrols(scene) {
-    patrols = (scene.patrolDefs || []).map(function (d) {
-      return { x: d.x, y: d.y, wps: d.wps, i: 0, speed: d.speed * 60, label: d.label,
-        active: true, chasing: false, frame: 0, frameTimer: 0, tx: d.x, ty: d.y };
-    });
+  function londonStandDown() {
+    var p = SCENES[2].patrols[0];
+    if (p) { p.wps = [{ x: 300, y: 320 }]; p.wp = 0; p.mode = 'patrol'; p.def.speed = 0.6; }
   }
-  function londonPatrolStandDown() {
-    // The housemate distracts the patrol: it walks to the far corner and stays.
-    for (var i = 0; i < patrols.length; i++) {
-      patrols[i].wps = [{ x: 300, y: 330 }];
-      patrols[i].i = 0;
-      patrols[i].speed = 0.6;
-    }
+  function showFinalChoice() {
+    var opts = [];
+    if (has('phone')) opts.push({ label: 'THE PHONE NUMBER', onPick: function () { finishGame('phone'); } });
+    if (has('blanket')) opts.push({ label: 'THE BLANKET', onPick: function () { finishGame('blanket'); } });
+    opts.push({ label: 'THE MEMORY OF HOME', onPick: function () { finishGame('memory'); } });
+    showChoice('WHAT DO YOU CARRY FORWARD?', opts);
   }
-
-  /* ================= player drawing ================= */
-  function drawPlayer() {
-    if (invuln > 0 && Math.floor(time / 120) % 2 === 0) return; // blink while invulnerable
-    drawChar(player.x, player.y, { shirt: '#2f6fb2', pants: '#2b3a55', frame: player.frame, moving: player.moving, flip: player.flip });
-  }
-
-  /* ================= flow ================= */
-  function startGame() {
-    AudioSys.init();
-    AudioSys.startMusic();
-    state = 'play';
-  }
-  function resetGame() {
-    sceneIndex = 0;
-    inventory = [];
-    flags = {};
-    hope = hopeMax;
-    stamina = staminaMax;
-    belonging = 20;
-    dialogue = null; choice = null; trans = null;
-    finalLine = ''; endingTitle = ''; endingBody = '';
-    particles = []; shake = 0; invuln = 0; restUsed = {};
-    // clear interactable done flags
-    scenes.forEach(function (s) {
-      (s.npcs || []).forEach(function (n) { n.done = false; });
-      (s.pickups || []).forEach(function (p) { p.done = false; });
-    });
-    enterScene(0);
-    state = 'title';
-  }
-  function enterScene(i) {
-    sceneIndex = i;
-    var s = scenes[i];
-    player.x = s.start.x; player.y = s.start.y;
-    player.moving = false; player.frame = 0;
-    buildPatrols(s);
-    invuln = 0;
-    state = 'play';
-  }
-  function startTransition(text, news, next) {
-    AudioSys.sfx('door');
-    spawnParticles(player.x + 7, player.y + 10, '#ffd76a', 16);
-    trans = { text: text, news: news || '', next: next, t: 0 };
-    state = 'transition';
-  }
-  function finishTransition() {
-    if (!trans) return;
-    var next = trans.next;
-    trans = null;
-    enterScene(next);
-  }
-  function caughtByPatrol() {
-    if (invuln > 0 || state !== 'play') return;
-    loseHope(1);
-    if (state === 'gameover') return;
-    player.x = scenes[sceneIndex].start.x;
-    player.y = scenes[sceneIndex].start.y;
-    invuln = 2;
-    buildPatrols(scenes[sceneIndex]);
-  }
-  function finishGame() {
-    AudioSys.sfx('hope');
+  function finishGame(carry) {
+    flags.carry = carry;
     if (hope >= 2 && belonging >= 40) {
-      endingTitle = 'YOU ARRIVE, AND YOU BEGIN TO BELONG.';
-      endingBody = 'You made it through every door. You helped people along the way, and they helped you. Belonging is not a place you arrive at. It is something you build, one shared blanket at a time.';
+      ending = { title: 'YOU ARRIVE, AND YOU BEGIN TO BELONG.', body: 'The door took a single step. The rest — safety, belonging, who you are to the people you love — that took everything after it. In Exit West, the doors are magic. The migration is not.' };
     } else if (hope >= 2) {
-      endingTitle = 'YOU ARRIVE. YOU ARE SAFE.';
-      endingBody = 'You made it through every door. You are safe. But belonging will take longer — you kept to yourself, and the doors only took you as far as your own two feet could carry you.';
+      ending = { title: 'YOU ARRIVE. YOU ARE SAFE.', body: 'You made it. You\'re safe. Belonging will take longer. It always does.' };
     } else {
-      endingTitle = 'YOU ARRIVE, TIRED, BUT YOU ARRIVE.';
-      endingBody = 'You made it through every door, but it cost you. Hope is a thin thing now. The door is behind you. The rest is ahead.';
+      ending = { title: 'YOU ARRIVE, TIRED, BUT YOU ARRIVE.', body: 'You\'re here. That\'s something. It has to be enough for now.' };
     }
+    ending.body += ' THE DOORS ARE MAGIC. THE MIGRATION IS NOT. AND OUTSIDE THIS GAME, THE SAME DOORS ARE OPENING AND CLOSING RIGHT NOW, AND WHO GETS TO WALK THROUGH AND WHO GETS TURNED AWAY IS STILL BEING DECIDED.';
     state = 'ending';
+    AudioSys.sfx('hope');
   }
 
-  /* ================= interaction ================= */
-  function nearestInteractable() {
-    var s = scenes[sceneIndex];
-    var list = [];
-    (s.npcs || []).forEach(function (n) { list.push(n); });
-    (s.pickups || []).forEach(function (p) { list.push(p); });
-    if (s.rest && !restUsed[sceneIndex]) list.push({ x: s.rest.x, y: s.rest.y, r: 48, label: s.rest.label, kind: 'rest', lines: [{ who: '', text: s.rest.msg }], onDone: function () { restUsed[sceneIndex] = true; if (hope < hopeMax) gainHope(1); } });
-    var cx = player.x + player.w / 2, cy = player.y + player.h / 2;
-    var best = null, bestD = 1e9;
-    for (var i = 0; i < list.length; i++) {
-      var it = list[i];
-      if (it.done) continue;
-      var d = dist(it.x, it.y, cx, cy);
-      if (d < (it.r || 48) && d < bestD) { best = it; bestD = d; }
+  /* ================= objective checks (single place) ================= */
+  function checkObjectives() {
+    if (sceneIndex === 0) {
+      if (step === 0 && dist(player.x, player.y, 200, 100) < 55) advanceStep();
+      else if (step === 1 && flags.nadiaMet) advanceStep();
+      else if (step === 2 && player.x > 450) advanceStep();
+    } else if (sceneIndex === 1) {
+      if (step === 2 && has('blanket') && has('water') && (has('food') || flags.migrantHelped)) advanceStep();
+    } else if (sceneIndex === 2) {
+      if (step === 0 && flags.housemateMet) advanceStep();
+      else if (step === 1 && flags.housemateDone) advanceStep();
+    } else if (sceneIndex === 3) {
+      if (step === 0 && player.y < 120) advanceStep();
     }
-    return best;
   }
-  function tryInteract() {
-    var it = nearestInteractable();
-    if (!it) return;
-    if (it.kind === 'rest') {
-      it.done = true;
-      startDialogue(it.lines, it.onDone);
-      return;
-    }
-    it.done = true;
-    if (it.item) {
-      AudioSys.sfx('pickup');
-      spawnParticles(it.x, it.y, '#7fb3e8', 10);
-    }
-    startDialogue(it.lines, it.onDone);
-  }
-  function collide(nx, ny) {
-    if (nx < 8 || nx + player.w > W - 8 || ny < 8 || ny + player.h > H - 8) return true;
-    var walls = scenes[sceneIndex].walls || [];
-    for (var i = 0; i < walls.length; i++) {
-      var w = walls[i];
-      if (nx < w.x + w.w && nx + player.w > w.x && ny < w.y + w.h && ny + player.h > w.y) return true;
+
+  /* ================= collision ================= */
+  function collides(x, y, w, h) {
+    var s = SCENES[sceneIndex];
+    for (var i = 0; i < s.walls.length; i++) {
+      var r = s.walls[i];
+      if (x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y) return true;
     }
     return false;
   }
+  function moveEntity(e, dx, dy) {
+    var nx = e.x + dx, ny = e.y;
+    if (!collides(nx - e.w / 2, ny - e.h / 2 + 6, e.w, e.h - 6)) e.x = nx;
+    ny = e.y + dy;
+    if (!collides(e.x - e.w / 2, ny - e.h / 2 + 6, e.w, e.h - 6)) e.y = ny;
+  }
 
   /* ================= update ================= */
-  var staminaLock = false;
+  var lastT = 0;
   function update(dt) {
-    time += dt * 1000;
-    // particles
-    for (var i = particles.length - 1; i >= 0; i--) {
-      var p = particles[i];
-      p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= dt;
-      if (p.life <= 0) particles.splice(i, 1);
-    }
-    if (shake > 0.3) shake *= Math.pow(0.02, dt); else shake = 0;
-    if (invuln > 0) invuln -= dt;
-    if (state === 'transition') {
-      if (trans) { trans.t += dt; if (trans.t > 3.0) finishTransition(); }
-      return;
-    }
+    var s = SCENES[sceneIndex];
     if (state !== 'play') return;
-
     // movement
     var dx = 0, dy = 0;
     if (keys['arrowleft'] || keys['a']) dx -= 1;
     if (keys['arrowright'] || keys['d']) dx += 1;
     if (keys['arrowup'] || keys['w']) dy -= 1;
     if (keys['arrowdown'] || keys['s']) dy += 1;
-    var sprinting = (keys['shift']) && stamina > 0 && !staminaLock && (dx || dy);
-    var speed = sprinting ? 240 : 150;
+    var sprint = (keys['shift'] || keys['shiftleft']) && !staminaLock;
+    var speed = sprint ? 240 : 150;
     if (dx || dy) {
       var len = Math.hypot(dx, dy);
-      dx = dx / len * speed * dt;
-      dy = dy / len * speed * dt;
-      var nx = player.x + dx;
-      if (!collide(nx, player.y)) player.x = nx;
-      var ny = player.y + dy;
-      if (!collide(player.x, ny)) player.y = ny;
+      dx /= len; dy /= len;
+      if (sprint && stamina > 0) {
+        stamina -= 45 * dt;
+        if (stamina <= 0) { stamina = 0; staminaLock = true; }
+      }
       player.moving = true;
-      player.flip = dx < 0;
-      player.frameTimer += dt;
-      if (player.frameTimer > 0.16) { player.frameTimer = 0; player.frame = player.frame === 0 ? 1 : 0; }
-    } else { player.moving = false; }
-    // stamina
-    if (sprinting) {
-      stamina -= 45 * dt;
-      if (stamina <= 0) { stamina = 0; staminaLock = true; }
+      player.walkT += dt;
+      player.dir = dx !== 0 ? (dx > 0 ? 1 : -1) : player.dir;
+      moveEntity(player, dx * speed * dt, dy * speed * dt);
     } else {
-      stamina += 28 * dt;
-      if (stamina >= 20) staminaLock = false;
+      player.moving = false;
+      if (!staminaLock) stamina = Math.min(100, stamina + 28 * dt);
     }
-    stamina = clamp(stamina, 0, staminaMax);
-
+    if (staminaLock && stamina >= 20) staminaLock = false;
+    if (player.inv > 0) player.inv -= dt;
     // patrols
-    var pcx = player.x + player.w / 2, pcy = player.y + player.h / 2;
-    for (var pi = 0; pi < patrols.length; pi++) {
-      var pt = patrols[pi];
-      if (!pt.active) continue;
-      var dPlayer = dist(pt.x, pt.y, pcx, pcy);
-      var tx, ty, sp;
-      if (dPlayer < 55 && invuln <= 0) {
-        pt.chasing = true;
-        tx = pcx; ty = pcy; sp = pt.speed * 1.15;
+    s.patrols.forEach(function (p) { updatePatrol(p, dt); });
+    // marchers
+    if (s.marchers) s.marchers.forEach(function (m) {
+      m.x += m.speed * dt;
+      if (m.x > W + 20) m.x = -20;
+      if (player.inv <= 0 && dist(player.x, player.y, m.x, m.y) < 16) {
+        burst(player.x, player.y, '#e74c3c', 10);
+        loseHope(1);
+        showMsg('THEY SHOVE YOU BACK. "GO HOME!"');
+      }
+    });
+    // particles
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var pt = particles[i];
+      pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 120 * dt;
+      if (pt.life <= 0) particles.splice(i, 1);
+    }
+    if (shakeT > 0) shakeT -= dt;
+    if (msg) { msg.t -= dt; if (msg.t <= 0) msg = null; }
+    // door proximity -> travel
+    s.doors.forEach(function (d) {
+      if (!d.locked() && player.x > d.x - 8 && player.x < d.x + d.w + 8 && player.y > d.y - 8 && player.y < d.y + d.h + 8) {
+        nearTarget = { type: 'door', ref: d, label: 'ENTER — WALK THROUGH THE DOOR' };
+      }
+    });
+    // near target detection (npc / item / memory / rest / flyer)
+    nearTarget = nearTarget && nearTarget.type === 'door' ? nearTarget : null;
+    var best = null, bestD = 48;
+    s.npcs.forEach(function (n) {
+      var d = dist(player.x, player.y, n.x, n.y);
+      if (d < bestD) { bestD = d; best = { type: 'npc', ref: n, label: 'E — TALK TO ' + n.name }; }
+    });
+    s.items.forEach(function (it) {
+      if (it.taken) return;
+      var d = dist(player.x, player.y, it.x, it.y);
+      if (d < bestD) { bestD = d; best = { type: 'item', ref: it, label: 'E — TAKE THE ' + it.type.toUpperCase() }; }
+    });
+    s.memories.forEach(function (m) {
+      if (m.taken) return;
+      var d = dist(player.x, player.y, m.x, m.y);
+      if (d < bestD) { bestD = d; best = { type: 'memory', ref: m, label: 'E — READ THE MEMORY' }; }
+    });
+    if (s.rests) s.rests.forEach(function (r) {
+      if (r.used) return;
+      var d = dist(player.x, player.y, r.x, r.y);
+      if (d < bestD) { bestD = d; best = { type: 'rest', ref: r, label: 'E — ' + r.label }; }
+    });
+    if (s.flyer) {
+      var d = dist(player.x, player.y, s.flyer.x, s.flyer.y);
+      if (d < bestD) { bestD = d; best = { type: 'flyer', ref: s.flyer, label: 'E — READ THE FLYER' }; }
+    }
+    if (best) nearTarget = best;
+    // door travel is triggered by Enter, not proximity alone (handled in keydown)
+    checkObjectives();
+  }
+  function updatePatrol(p, dt) {
+    var def = p.def;
+    var target = p.wps[p.wp];
+    if (p.mode === 'patrol') {
+      var d = dist(p.x, p.y, target.x, target.y);
+      if (d < 4) { p.wp = (p.wp + 1) % p.wps.length; target = p.wps[p.wp]; }
+      var dx = target.x - p.x, dy = target.y - p.y;
+      var len = Math.hypot(dx, dy) || 1;
+      var sp = def.speed * 60;
+      p.x += (dx / len) * sp * dt;
+      p.y += (dy / len) * sp * dt;
+      p.dir = dx !== 0 ? (dx > 0 ? 1 : -1) : p.dir;
+      p.walkT += dt;
+      // detection
+      if (player.inv <= 0 && dist(player.x, player.y, p.x, p.y) < def.detect) {
+        p.mode = 'chase';
+      }
+    } else if (p.mode === 'chase') {
+      var dx2 = player.x - p.x, dy2 = player.y - p.y;
+      var len2 = Math.hypot(dx2, dy2) || 1;
+      var sp2 = def.speed * 60 * def.chase;
+      p.x += (dx2 / len2) * sp2 * dt;
+      p.y += (dy2 / len2) * sp2 * dt;
+      p.dir = dx2 !== 0 ? (dx2 > 0 ? 1 : -1) : p.dir;
+      p.walkT += dt;
+      if (dist(player.x, player.y, p.x, p.y) > def.detect * 2.2) {
+        p.mode = 'return';
+      }
+      if (player.inv <= 0 && dist(player.x, player.y, p.x, p.y) < 16) {
+        burst(player.x, player.y, '#e74c3c', 12);
+        loseHope(1);
+        p.mode = 'patrol';
+        p.wp = 0;
+        p.x = p.wps[0].x; p.y = p.wps[0].y;
+      }
+    } else if (p.mode === 'return') {
+      var home = p.wps[0];
+      var d3 = dist(p.x, p.y, home.x, home.y);
+      if (d3 < 6) { p.mode = 'patrol'; p.wp = 0; return; }
+      var dx3 = home.x - p.x, dy3 = home.y - p.y;
+      var len3 = Math.hypot(dx3, dy3) || 1;
+      var sp3 = def.speed * 60;
+      p.x += (dx3 / len3) * sp3 * dt;
+      p.y += (dy3 / len3) * sp3 * dt;
+      p.dir = dx3 !== 0 ? (dx3 > 0 ? 1 : -1) : p.dir;
+      p.walkT += dt;
+    }
+  }
+
+  /* ================= interact ================= */
+  function doInteract() {
+    if (state !== 'play' || !nearTarget) return;
+    var t = nearTarget;
+    if (t.type === 'npc') { t.ref.interact(); }
+    else if (t.type === 'item') {
+      var it = t.ref;
+      if (it.taken) return;
+      it.taken = true;
+      AudioSys.sfx('pickup');
+      burst(it.x, it.y, '#ffd76a', 8);
+      if (it.onTake) it.onTake();
+    } else if (t.type === 'memory') {
+      var m = t.ref;
+      if (m.taken) return;
+      m.taken = true; memCount++;
+      belonging = clamp(belonging + 5, 0, 100);
+      AudioSys.sfx('memory');
+      startDialogue([m.text]);
+    } else if (t.type === 'rest') {
+      var r = t.ref;
+      if (r.used) return;
+      r.used = true;
+      if (hope < maxHope) { gainHope(1); AudioSys.sfx('hope'); showMsg('YOU REST. HOPE +1.'); }
+      else showMsg('YOU REST. YOU FEEL STEADIER.');
+      burst(r.x, r.y, '#7fb3e8', 8);
+    } else if (t.type === 'flyer') {
+      startDialogue(["A flyer, taped crooked to the wall: TAKE BACK OUR STREETS.", "Underneath, someone's written in marker: whose streets?"]);
+    } else if (t.type === 'door') {
+      var d = t.ref;
+      if (!d.locked()) startTransition(d.news, d.to);
+      else { AudioSys.sfx('deny'); showMsg('THE DOOR IS SHUT. FINISH WHAT THIS PLACE ASKS FIRST.'); }
+    }
+  }
+
+  /* ================= render ================= */
+  function drawScene(t) {
+    var s = SCENES[sceneIndex];
+    // sky
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, s.sky[0]); g.addColorStop(1, s.sky[1]);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // ground
+    if (s.ground === 'street') drawStreet(0, 60, W, 270);
+    else if (s.ground === 'sand') drawSand(0, 60, W, 270);
+    else if (s.ground === 'grass') drawGrass(0, 60, W, 270);
+    else if (s.ground === 'house') { drawWoodFloor(0, 60, W, 270); drawStreet(250, 60, W - 250, 270); }
+    // walls (brick for buildings, dark for boundaries)
+    s.walls.forEach(function (r) {
+      if (r.w === 640 || r.h === 320 || r.x === 0 || r.x === 630) {
+        ctx.fillStyle = '#1a1f2a'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      } else if (s.ground === 'house' && r.x >= 10 && r.x <= 250) {
+        drawBrickWall(r.x, r.y, r.w, r.h);
       } else {
-        pt.chasing = false;
-        var wp = pt.wps[pt.i];
-        tx = wp.x; ty = wp.y; sp = pt.speed;
-        if (dist(pt.x, pt.y, tx, ty) < 4) pt.i = (pt.i + 1) % pt.wps.length;
+        drawBrickWall(r.x, r.y, r.w, r.h);
       }
-      var ddx = tx - pt.x, ddy = ty - pt.y;
-      var dl = Math.hypot(ddx, ddy);
-      if (dl > 0.5) {
-        pt.x += ddx / dl * sp * dt;
-        pt.y += ddy / dl * sp * dt;
-        pt.frameTimer += dt;
-        if (pt.frameTimer > 0.18) { pt.frameTimer = 0; pt.frame = pt.frame === 0 ? 1 : 0; }
+    });
+    // scene decoration
+    if (sceneIndex === 0) {
+      // class building sign
+      ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText('EVENING CLASS', 200, 52);
+      ctx.fillText('NADIA\'S STREET', 510, 52);
+      ctx.textAlign = 'left';
+      // a lamp glow
+      ctx.fillStyle = 'rgba(255,215,106,0.12)';
+      ctx.fillRect(180, 60, 40, 90);
+    } else if (sceneIndex === 1) {
+      // tents (drawn over the wall blocks)
+      if (SPRITES.tent) {
+        drawSprite('tent', 0, 196, 168);
+        drawSprite('tent', 0, 396, 108);
       }
-      if (dPlayer < 16 && invuln <= 0) caughtByPatrol();
+      // sea at the top
+      ctx.fillStyle = '#2a5a8a'; ctx.fillRect(0, 40, W, 20);
+      ctx.fillStyle = '#7fb3e8';
+      for (var i = 0; i < 12; i++) ctx.fillRect((i * 53 + (t / 40) % 53) % 640, 48 + (i % 2) * 6, 20, 2);
+    } else if (sceneIndex === 2) {
+      // flyer
+      ctx.fillStyle = '#e8ecf3'; ctx.fillRect(292, 66, 16, 22);
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(294, 70, 12, 3); ctx.fillRect(294, 76, 12, 3);
+      // bed
+      if (SPRITES.bed) drawSprite('bed', 0, 48, 272);
+      // house roofline
+      ctx.fillStyle = '#4a2a2a'; ctx.fillRect(10, 40, 240, 8);
+    } else if (sceneIndex === 3) {
+      // banners in the march
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(120, 60, 60, 14);
+      ctx.fillStyle = '#e8ecf3'; ctx.font = '7px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText('GO HOME', 150, 70);
+      ctx.textAlign = 'left';
+    } else if (sceneIndex === 4) {
+      if (SPRITES.house) drawSprite('house', 0, 460, 100);
+      if (SPRITES.tree) { drawSprite('tree', 0, 100, 220); drawSprite('tree', 0, 540, 240); }
+      // a path
+      fillTextured(60, 300, 520, 30, '#b8a888', '#a89878', '#c8b898', 6);
     }
-
     // doors
-    var s = scenes[sceneIndex];
-    if (s.door) {
-      var d = s.door;
-      var overlap = player.x < d.x + d.w && player.x + player.w > d.x &&
-                    player.y < d.y + d.h && player.y + player.h > d.y;
-      if (overlap) {
-        if (d.locked()) {
-          player.x = d.x - player.w - 4;
-          AudioSys.sfx('deny');
-          startDialogue([{ who: '', text: d.lockedMsg }]);
-        } else {
-          startTransition(d.text, d.news, d.to);
-        }
+    s.doors.forEach(function (d) { drawDoorSprite(d, t); });
+    // items
+    s.items.forEach(function (it) {
+      if (!it.taken) drawItemIcon(it.x - 5, it.y - 5, it.type, t);
+    });
+    // memories
+    s.memories.forEach(function (m) {
+      if (!m.taken) drawItemIcon(m.x - 5, m.y - 5, 'memory', t);
+    });
+    // rests
+    if (s.rests) s.rests.forEach(function (r) {
+      if (!r.used) {
+        if (SPRITES.bench && sceneIndex !== 2) drawSprite('bench', 0, r.x - 12, r.y - 5);
+        ctx.fillStyle = 'rgba(127,179,232,0.5)';
+        ctx.fillRect(r.x - 8, r.y - 8, 16, 16);
       }
-    }
-    if (s.barredDoor) {
-      var bd = s.barredDoor;
-      var boverlap = player.x < bd.x + bd.w && player.x + player.w > bd.x &&
-                     player.y < bd.y + bd.h && player.y + player.h > bd.y;
-      if (boverlap) {
-        player.x = bd.x - player.w - 4;
-        AudioSys.sfx('deny');
-        startDialogue([{ who: '', text: bd.msg }]);
-      }
-    }
-  }
-
-  /* ================= rendering ================= */
-  function drawHeart(x, y, filled) {
-    var map = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
-    ctx.fillStyle = filled ? '#e74c3c' : '#3a3a3a';
-    for (var r = 0; r < map.length; r++) {
-      for (var c = 0; c < map[r].length; c++) {
-        if (map[r][c] === 'X') ctx.fillRect(x + c * 2, y + r * 2, 2, 2);
-      }
-    }
-  }
-  function drawBar(x, y, w, h, frac, color, bg) {
-    ctx.fillStyle = bg || '#1a1a1a';
-    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, Math.max(0, w * clamp(frac, 0, 1)), h);
-  }
-  function drawHUD() {
-    // top bar
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, W, 52);
-    var s = scenes[sceneIndex];
-    ctx.fillStyle = '#ffd76a';
-    ctx.font = '8px ' + FONT;
-    ctx.textAlign = 'left';
-    ctx.fillText(s.name, 10, 14);
-    ctx.fillStyle = '#e8ecf3';
-    ctx.font = '7px ' + FONT;
-    wrapText(s.objective, 10, 26, 400, 11);
-    // hearts + bars (top right)
-    for (var hi = 0; hi < hopeMax; hi++) drawHeart(W - 120 + hi * 18, 8, hi < hope);
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '7px ' + FONT;
-    ctx.fillText('RUN', W - 120, 34);
-    drawBar(W - 78, 28, 68, 6, stamina / staminaMax, staminaLock ? '#c0392b' : '#2ecc71');
-    ctx.fillText('BELONG', W - 120, 46);
-    drawBar(W - 78, 40, 68, 6, belonging / 100, '#ffd76a');
-    // inventory (bottom left)
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    var invText = inventory.length ? 'CARRYING: ' + inventory.map(itemLabel).join(' · ').toUpperCase() : 'CARRYING: NOTHING YET';
-    ctx.font = '7px ' + FONT;
-    ctx.fillRect(0, H - 22, ctx.measureText(invText).width + 20, 22);
-    ctx.fillStyle = '#ffd76a';
-    ctx.fillText(invText, 10, H - 8);
-    // interact prompt
-    if (state === 'play') {
-      var it = nearestInteractable();
-      if (it) {
-        ctx.font = '8px ' + FONT;
-        var label = 'E — ' + (it.label || 'TALK');
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
-        ctx.fillRect(W / 2 - ctx.measureText(label).width / 2 - 10, H - 46, ctx.measureText(label).width + 20, 20);
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, W / 2, H - 32);
+    });
+    // npcs
+    s.npcs.forEach(function (n) {
+      var f = Math.floor(t / 500) % 2;
+      drawCharAt(n.sprite, f, n.x, n.y, false);
+      ctx.fillStyle = '#e8ecf3'; ctx.font = '7px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText(n.name, n.x, n.y - 22);
+      ctx.textAlign = 'left';
+    });
+    // patrols
+    s.patrols.forEach(function (p) {
+      var f = Math.floor(p.walkT * 8) % 2;
+      drawCharAt(p.sprite, f, p.x, p.y, p.dir < 0);
+      if (p.mode === 'chase') {
+        ctx.fillStyle = '#e74c3c'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
+        ctx.fillText('!', p.x, p.y - 24);
         ctx.textAlign = 'left';
       }
+    });
+    // marchers
+    if (s.marchers) s.marchers.forEach(function (m) {
+      var f = Math.floor(t / 300 + m.x) % 2;
+      drawCharAt(m.sprite, f, m.x, m.y, false);
+    });
+    // player
+    var pf = player.moving ? (Math.floor(player.walkT * 8) % 2) : 0;
+    if (player.inv > 0 && Math.floor(t / 120) % 2 === 0) {
+      // blink while invulnerable
+    } else {
+      drawCharAt('saeed', pf, player.x, player.y, player.dir < 0);
     }
-    // patrol warning
-    for (var pi = 0; pi < patrols.length; pi++) {
-      var pt = patrols[pi];
-      if (pt.chasing) {
-        ctx.fillStyle = '#e74c3c';
-        ctx.font = 'bold 14px ' + FONT;
-        ctx.textAlign = 'center';
-        ctx.fillText('!', pt.x, pt.y - 8);
-        ctx.textAlign = 'left';
-      }
+    // particles
+    particles.forEach(function (pt) {
+      ctx.globalAlpha = clamp(pt.life, 0, 1);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+    });
+    ctx.globalAlpha = 1;
+    // objective + HUD
+    drawHUD();
+    // prompt
+    if (nearTarget && state === 'play') {
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      var pw = ctx.measureText(nearTarget.label).width + 20;
+      ctx.fillRect(W / 2 - pw / 2, H - 44, pw, 22);
+      ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText(nearTarget.label, W / 2, H - 30);
+      ctx.textAlign = 'left';
     }
-  }
-  function drawPatrols() {
-    for (var i = 0; i < patrols.length; i++) {
-      var pt = patrols[i];
-      drawChar(pt.x - 7, pt.y - 11, { shirt: '#3a3a3a', pants: '#1a1a1a', cap: '#c0392b', frame: pt.frame, moving: true });
-      ctx.fillStyle = '#e8ecf3';
-      ctx.font = '6px ' + FONT;
-      ctx.textAlign = 'center';
-      ctx.fillText(pt.label, pt.x, pt.y - 16);
+    // message
+    if (msg) {
+      ctx.fillStyle = 'rgba(0,0,0,0.75)';
+      var mw = ctx.measureText(msg.text).width + 20;
+      ctx.fillRect(W / 2 - mw / 2, 66, mw, 22);
+      ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText(msg.text, W / 2, 80);
       ctx.textAlign = 'left';
     }
   }
-  function drawParticles() {
-    for (var i = 0; i < particles.length; i++) {
-      var p = particles[i];
-      ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
-      ctx.fillStyle = p.color;
-      ctx.fillRect(p.x, p.y, p.size, p.size);
+  function drawHUD() {
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, 0, W, 40);
+    // scene name + objective
+    ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT;
+    ctx.fillText(SCENES[sceneIndex].name, 8, 14);
+    ctx.fillStyle = '#e8ecf3';
+    var obj = SCENES[sceneIndex].objectives[step] || '';
+    ctx.fillText('GOAL: ' + obj, 8, 28);
+    // hope hearts
+    var hx = W - 150;
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
+    ctx.fillText('HOPE', hx - 40, 14);
+    for (var i = 0; i < maxHope; i++) {
+      ctx.fillStyle = i < hope ? '#e74c3c' : '#3a3a3a';
+      ctx.fillRect(hx + i * 16, 6, 12, 12);
+      if (i < hope) { ctx.fillStyle = '#ff6b6b'; ctx.fillRect(hx + i * 16 + 2, 8, 4, 4); ctx.fillRect(hx + i * 16 + 6, 8, 4, 4); }
     }
-    ctx.globalAlpha = 1;
+    // stamina + belonging
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(W - 150, 20, stamina * 1.4, 6);
+    ctx.fillStyle = '#ffd76a';
+    ctx.fillRect(W - 150, 29, belonging * 1.4, 6);
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
+    ctx.fillText('RUN', W - 150, 19);
+    ctx.fillText('BELONG', W - 150, 28);
+    // inventory
+    var ix = 8;
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
+    ctx.fillText('CARRYING: ' + (inventory.length ? inventory.join(', ').toUpperCase() : 'NOTHING') + (memCount ? '   MEMORIES: ' + memCount : ''), ix, 38);
   }
-  var choiceRects = [];
-  function drawDialogue() {
-    if (!dialogue) return;
-    var line = dialogue.lines[dialogue.i];
-    ctx.fillStyle = 'rgba(0,0,0,0.82)';
-    ctx.fillRect(20, H - 104, W - 40, 88);
-    ctx.strokeStyle = '#ffd76a';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(20, H - 104, W - 40, 88);
-    if (line.who) {
-      ctx.fillStyle = '#ffd76a';
-      ctx.font = '8px ' + FONT;
-      ctx.fillText(line.who, 34, H - 82);
-    }
-    ctx.fillStyle = '#fff';
-    ctx.font = '9px ' + FONT;
-    wrapText(line.text, 34, line.who ? H - 64 : H - 78, W - 72, 16);
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '7px ' + FONT;
-    ctx.textAlign = 'right';
-    ctx.fillText('E / ENTER — CONTINUE', W - 32, H - 26);
-    ctx.textAlign = 'left';
+  function drawBox(lines, title) {
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect(40, H - 130, W - 80, 120);
+    ctx.strokeStyle = '#ffd76a'; ctx.lineWidth = 2;
+    ctx.strokeRect(40, H - 130, W - 80, 120);
+    if (title) { ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.fillText(title, 56, H - 110); }
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
+    var y = title ? H - 92 : H - 108;
+    lines.forEach(function (ln) { y = wrapText(ln, 56, y, W - 112, 16, false) + 8; });
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
+    ctx.fillText('ENTER — CONTINUE', W - 150, H - 18);
   }
   function drawChoice() {
-    if (!choice) return;
-    ctx.fillStyle = 'rgba(0,0,0,0.78)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#fff';
-    ctx.font = '10px ' + FONT;
-    ctx.textAlign = 'center';
-    wrapText(choice.prompt, W / 2, 84, W - 140, 18, true);
-    choiceRects = [];
-    for (var i = 0; i < choice.options.length; i++) {
-      var y = 168 + i * 48;
-      var label = (i + 1) + '. ' + choice.options[i].label;
-      choiceRects.push({ x: W / 2 - 200, y: y - 18, w: 400, h: 36, index: i });
-      ctx.fillStyle = choice.selected === i ? '#ffd76a' : '#232f47';
-      ctx.fillRect(W / 2 - 200, y - 18, 400, 36);
-      ctx.strokeStyle = choice.selected === i ? '#fff' : '#3a4a6b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(W / 2 - 200, y - 18, 400, 36);
-      ctx.fillStyle = choice.selected === i ? '#101623' : '#e8ecf3';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd76a'; ctx.font = '10px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText(choice.prompt, W / 2, 110);
+    ctx.textAlign = 'left';
+    choice.opts.forEach(function (o, i) {
+      var y = 150 + i * 36;
+      ctx.fillStyle = i === choice.sel ? '#ffd76a' : '#232f47';
+      ctx.fillRect(W / 2 - 190, y, 380, 28);
+      ctx.fillStyle = i === choice.sel ? '#000' : '#e8ecf3';
       ctx.font = '9px ' + FONT;
-      ctx.fillText(label, W / 2, y + 5);
-    }
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '7px ' + FONT;
-    ctx.fillText('PRESS 1 / 2 / 3, OR USE UP / DOWN AND ENTER. CLICK ALSO WORKS.', W / 2, 322);
+      ctx.fillText((i + 1) + '. ' + o.label, W / 2 - 178, y + 18);
+    });
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText('UP / DOWN OR CLICK — ENTER TO CHOOSE', W / 2, 280);
     ctx.textAlign = 'left';
   }
-  function drawTitle() {
-    ctx.fillStyle = '#101623'; ctx.fillRect(0, 0, W, H);
-    // big glowing door
-    var pulse = 0.2 + 0.08 * Math.sin(time / 300);
-    ctx.fillStyle = 'rgba(255,215,106,' + pulse + ')';
-    ctx.fillRect(W / 2 - 52, 52, 104, 160);
-    ctx.fillStyle = '#ffd76a';
-    ctx.fillRect(W / 2 - 40, 62, 80, 140);
-    ctx.fillStyle = '#fff3c4';
-    ctx.fillRect(W / 2 - 32, 70, 64, 124);
-    ctx.fillStyle = '#8a6d1b';
-    ctx.fillRect(W / 2 + 24, 130, 4, 4);
-    // a small figure walking toward it
-    drawChar(W / 2 - 60, 190, { shirt: '#2f6fb2', frame: Math.floor(time / 300) % 2, moving: true });
-    ctx.fillStyle = '#ffd76a';
-    ctx.font = '30px ' + FONT;
-    ctx.textAlign = 'center';
-    ctx.fillText('DOORS', W / 2, 258);
-    ctx.fillStyle = '#e8ecf3';
-    ctx.font = '9px ' + FONT;
-    ctx.fillText('A GAME ABOUT EXIT WEST BY MOHSIN HAMID', W / 2, 286);
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '7px ' + FONT;
-    ctx.fillText('ARROWS / WASD TO MOVE · SHIFT TO RUN · E TO TALK', W / 2, 312);
-    ctx.fillStyle = '#fff';
-    ctx.font = '9px ' + FONT;
-    ctx.fillText('PRESS ENTER TO BEGIN', W / 2, 340);
+  function drawTitle(t) {
+    ctx.fillStyle = '#0b0f18'; ctx.fillRect(0, 0, W, H);
+    // a glowing door
+    var pulse = 0.5 + 0.3 * Math.sin(t / 400);
+    ctx.fillStyle = 'rgba(255,215,106,' + pulse * 0.35 + ')';
+    ctx.fillRect(W / 2 - 60, 60, 120, 170);
+    if (SPRITES.door) drawSprite('door', 0, W / 2 - 16, 60);
+    else { ctx.fillStyle = '#ffd76a'; ctx.fillRect(W / 2 - 30, 70, 60, 130); }
+    ctx.fillStyle = '#ffd76a'; ctx.font = '20px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText('DOORS', W / 2, 260);
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '8px ' + FONT;
+    ctx.fillText('A GAME ABOUT EXIT WEST', W / 2, 286);
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
+    ctx.fillText('PRESS ENTER TO BEGIN', W / 2, 320);
     ctx.textAlign = 'left';
   }
   function drawTransition() {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#e8ecf3';
-    ctx.font = '11px ' + FONT;
-    ctx.textAlign = 'center';
-    if (trans) {
-      wrapText(trans.text, W / 2, 130, W - 120, 22, true);
-      if (trans.news) {
-        ctx.fillStyle = '#ffd76a';
-        ctx.font = '8px ' + FONT;
-        wrapText(trans.news, W / 2, 220, W - 120, 18, true);
-      }
-    }
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '7px ' + FONT;
-    ctx.fillText('PRESS ENTER TO CONTINUE', W / 2, 310);
-    ctx.textAlign = 'left';
-  }
-  function drawGameOver() {
-    ctx.fillStyle = '#1a0f0f'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#e74c3c';
-    ctx.font = '20px ' + FONT;
-    ctx.textAlign = 'center';
-    ctx.fillText('YOU TURN BACK.', W / 2, 130);
-    ctx.fillStyle = '#e8ecf3';
-    ctx.font = '10px ' + FONT;
-    wrapText('Hope ran out. The doors are still there — but not today.', W / 2, 170, W - 140, 20, true);
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '8px ' + FONT;
-    ctx.fillText('PRESS R TO TRY AGAIN', W / 2, 280);
+    ctx.fillStyle = '#ffd76a'; ctx.font = '10px ' + FONT; ctx.textAlign = 'center';
+    wrapText(transition.news, W / 2, 150, 520, 20, true);
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '8px ' + FONT;
+    ctx.fillText('THE DOOR CLOSES BEHIND YOU.', W / 2, 250);
     ctx.textAlign = 'left';
   }
   function drawEnding() {
-    ctx.fillStyle = '#101623'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#ffd76a';
-    ctx.font = '13px ' + FONT;
-    ctx.textAlign = 'center';
-    wrapText(endingTitle, W / 2, 48, W - 80, 22, true);
-    ctx.fillStyle = '#e8ecf3';
-    ctx.font = '9px ' + FONT;
-    wrapText(endingBody, W / 2, 100, W - 120, 18, true);
-    ctx.fillStyle = '#ffd76a';
-    ctx.font = '9px ' + FONT;
-    wrapText(finalLine, W / 2, 218, W - 120, 18, true);
-    ctx.fillStyle = '#9fb0c3';
-    ctx.font = '8px ' + FONT;
-    wrapText('THE DOORS ARE MAGIC. THE MIGRATION IS NOT. AND OUTSIDE THIS GAME, THE SAME DOORS ARE OPENING AND CLOSING RIGHT NOW — WHO GETS TO WALK THROUGH, AND WHO GETS TURNED AWAY, IS STILL BEING DECIDED.', W / 2, 262, W - 100, 16, true);
-    ctx.fillText('PRESS R TO PLAY AGAIN', W / 2, 340);
+    ctx.fillStyle = '#0b0f18'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ffd76a'; ctx.font = '11px ' + FONT; ctx.textAlign = 'center';
+    wrapText(ending.title, W / 2, 80, 560, 22, true);
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
+    wrapText(ending.body, W / 2, 130, 520, 18, true);
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '8px ' + FONT;
+    ctx.fillText('PRESS R TO PLAY AGAIN', W / 2, 320);
     ctx.textAlign = 'left';
   }
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
+  function drawGameOver() {
+    ctx.fillStyle = '#1a0a0a'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#e74c3c'; ctx.font = '14px ' + FONT; ctx.textAlign = 'center';
+    ctx.fillText('YOU TURN BACK.', W / 2, 150);
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
+    ctx.fillText('NOT THIS TIME. THE DOOR IS STILL THERE.', W / 2, 190);
+    ctx.fillText('MAYBE TOMORROW.', W / 2, 214);
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '8px ' + FONT;
+    ctx.fillText('PRESS R TO TRY AGAIN', W / 2, 260);
+    ctx.textAlign = 'left';
+  }
+  function render(t) {
     ctx.save();
-    if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
-    if (state === 'title') { drawTitle(); ctx.restore(); return; }
-    if (state === 'transition') { drawTransition(); ctx.restore(); return; }
-    if (state === 'gameover') { drawGameOver(); ctx.restore(); return; }
-    if (state === 'ending') { drawEnding(); ctx.restore(); return; }
-    scenes[sceneIndex].draw(time);
-    drawPatrols();
-    drawParticles();
-    drawHUD();
-    if (state === 'dialogue') drawDialogue();
-    if (state === 'choice') drawChoice();
+    if (shakeT > 0) ctx.translate((Math.random() - 0.5) * shakeMag, (Math.random() - 0.5) * shakeMag);
+    if (state === 'title') drawTitle(t);
+    else if (state === 'transition') drawTransition();
+    else if (state === 'ending') drawEnding();
+    else if (state === 'gameover') drawGameOver();
+    else {
+      drawScene(t);
+      if (state === 'talk' && dialog) drawBox([dialog.lines[dialog.idx]], 'DIALOGUE');
+      if (state === 'choice' && choice) drawChoice();
+    }
     ctx.restore();
   }
 
   /* ================= input ================= */
-  function handleKeyPress(k) {
-    if (k === 'm') { AudioSys.init(); AudioSys.setMuted(!AudioSys.muted); return; }
-    if (state === 'title') {
-      if (k === 'enter' || k === ' ') { AudioSys.init(); AudioSys.startMusic(); startGame(); }
-      return;
-    }
-    if (state === 'dialogue') {
-      if (k === 'e' || k === 'enter' || k === ' ') advanceDialogue();
-      return;
-    }
-    if (state === 'choice') {
-      if (k === '1') { choice.selected = 0; pickChoice(); }
-      else if (k === '2' && choice.options.length > 1) { choice.selected = 1; pickChoice(); }
-      else if (k === '3' && choice.options.length > 2) { choice.selected = 2; pickChoice(); }
-      else if (k === 'arrowup') { choice.selected = (choice.selected + choice.options.length - 1) % choice.options.length; }
-      else if (k === 'arrowdown') { choice.selected = (choice.selected + 1) % choice.options.length; }
-      else if (k === 'enter' || k === ' ') { pickChoice(); }
-      return;
-    }
-    if (state === 'transition') {
-      if (k === 'enter' || k === ' ' || k === 'e') finishTransition();
-      return;
-    }
-    if (state === 'gameover') {
-      if (k === 'r') { resetGame(); }
-      return;
-    }
-    if (state === 'ending') {
-      if (k === 'r') resetGame();
-      return;
-    }
-    if (state === 'play') {
-      if (k === 'e') tryInteract();
-      else if (k === 'r') resetGame();
-    }
-  }
-  window.addEventListener('keydown', function (e) {
-    var k = e.key.toLowerCase();
+  function onKeyDown(e) {
+    var k = (e.key || '').toLowerCase();
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].indexOf(k) !== -1) e.preventDefault();
+    if (k === 'm') { AudioSys.init(); AudioSys.setMuted(!AudioSys.muted); return; }
+    if (k === 'r') { resetGame(); return; }
+    if (state === 'title' && (k === 'enter' || k === ' ')) {
+      AudioSys.init(); AudioSys.startMusic();
+      state = 'play';
+      showMsg(SCENES[0].intro);
+      return;
+    }
+    if (state === 'talk' && (k === 'enter' || k === 'e' || k === ' ')) { advanceDialogue(); return; }
+    if (state === 'choice') {
+      if (k === 'arrowup') { choice.sel = (choice.sel + choice.opts.length - 1) % choice.opts.length; return; }
+      if (k === 'arrowdown') { choice.sel = (choice.sel + 1) % choice.opts.length; return; }
+      if (k === 'enter' || k === ' ') { pickChoice(choice.sel); return; }
+      if (k === '1' || k === '2' || k === '3') { pickChoice(parseInt(k, 10) - 1); return; }
+      return;
+    }
+    if (state === 'transition') return;
+    if (state === 'ending' || state === 'gameover') return;
+    if (k === 'enter' && nearTarget && nearTarget.type === 'door') { doInteract(); return; }
+    if (k === 'e' || k === ' ') { doInteract(); return; }
     keys[k] = true;
-    if (!e.repeat) handleKeyPress(k);
+    if (k === 'shift') keys['shift'] = true;
+  }
+  function onKeyUp(e) {
+    var k = (e.key || '').toLowerCase();
+    keys[k] = false;
+    if (k === 'shift') keys['shift'] = false;
+  }
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('click', function (e) {
+    AudioSys.init(); AudioSys.startMusic();
+    if (state === 'title') { state = 'play'; showMsg(SCENES[0].intro); return; }
+    if (state === 'talk') { advanceDialogue(); return; }
+    if (state === 'choice' && choice) {
+      var rect = canvas.getBoundingClientRect();
+      var mx = (e.clientX - rect.left) * (W / rect.width);
+      var my = (e.clientY - rect.top) * (H / rect.height);
+      for (var i = 0; i < choice.opts.length; i++) {
+        var y = 150 + i * 36;
+        if (mx > W / 2 - 190 && mx < W / 2 + 190 && my > y && my < y + 28) { pickChoice(i); return; }
+      }
+      return;
+    }
+    if (state === 'play') doInteract();
   });
-  window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
-
-  document.querySelectorAll('.dpad button').forEach(function (btn) {
+  document.querySelectorAll('#pad [data-k]').forEach(function (btn) {
     var k = btn.getAttribute('data-k');
-    btn.addEventListener('pointerdown', function () { keys[k] = true; });
+    btn.addEventListener('pointerdown', function (e) { e.preventDefault(); keys[k] = true; });
     btn.addEventListener('pointerup', function () { keys[k] = false; });
     btn.addEventListener('pointerleave', function () { keys[k] = false; });
   });
-  document.getElementById('btn-act').addEventListener('click', function () { AudioSys.init(); handleKeyPress('e'); });
-  document.getElementById('btn-enter').addEventListener('click', function () { AudioSys.init(); handleKeyPress('enter'); });
-  document.getElementById('btn-restart').addEventListener('click', function () { resetGame(); });
-  document.getElementById('btn-mute').addEventListener('click', function () { AudioSys.init(); AudioSys.setMuted(!AudioSys.muted); });
-  document.getElementById('btn-run').addEventListener('pointerdown', function () { keys['shift'] = true; });
-  document.getElementById('btn-run').addEventListener('pointerup', function () { keys['shift'] = false; });
-  document.getElementById('btn-run').addEventListener('pointerleave', function () { keys['shift'] = false; });
-  canvas.addEventListener('click', function (e) {
-    AudioSys.init();
-    if (state === 'dialogue') { advanceDialogue(); return; }
-    if (state === 'transition') { finishTransition(); return; }
-    if (state === 'title') { AudioSys.startMusic(); startGame(); return; }
-    if (state === 'choice' && choice) {
-      var rect = canvas.getBoundingClientRect();
-      var scaleX = W / rect.width, scaleY = H / rect.height;
-      var cx = (e.clientX - rect.left) * scaleX;
-      var cy = (e.clientY - rect.top) * scaleY;
-      for (var i = 0; i < choiceRects.length; i++) {
-        var r = choiceRects[i];
-        if (cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h) {
-          choice.selected = r.index;
-          pickChoice();
-          return;
-        }
-      }
-    }
-  });
+  function bindBtn(id, down, up) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); down(); });
+    if (up) b.addEventListener('pointerup', up);
+  }
+  bindBtn('btn-act', function () { AudioSys.init(); doInteract(); });
+  bindBtn('btn-run', function () { keys['shift'] = true; }, function () { keys['shift'] = false; });
+  bindBtn('btn-enter', function () { onKeyDown({ key: 'Enter', preventDefault: function () {} }); });
+  bindBtn('btn-mute', function () { AudioSys.init(); AudioSys.setMuted(!AudioSys.muted); });
+  bindBtn('btn-restart', function () { resetGame(); });
 
   /* ================= main loop ================= */
-  var last = 0;
-  function loop(ts) {
-    var dt = last ? clamp((ts - last) / 1000, 0, 0.05) : 0.016;
-    last = ts;
-    update(dt);
-    draw();
-    requestAnimationFrame(loop);
+  function frame(ts) {
+    var dt = Math.min(0.05, (ts - lastT) / 1000 || 0.016);
+    lastT = ts;
+    if (state === 'transition' && transition) {
+      transition.t += dt;
+      if (transition.t > 2.4) {
+        var to = transition.to;
+        transition = null;
+        goToScene(to);
+        state = 'play';
+        showMsg(SCENES[to].intro);
+      }
+    } else {
+      update(dt);
+    }
+    render(ts);
+    requestAnimationFrame(frame);
   }
-  buildPatrols(scenes[0]);
-  requestAnimationFrame(loop);
+  resetGame();
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
