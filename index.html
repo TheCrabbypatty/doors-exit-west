@@ -3835,6 +3835,13 @@
   var step = 0; // objective step within the scene
   var shakeT = 0, shakeMag = 0;
   var particles = [];
+  var camX = 0, camY = 0;
+  function worldW() { return SCENES[sceneIndex].worldW || W; }
+  function worldH() { return SCENES[sceneIndex].worldH || H; }
+  function clampCam() {
+    camX = clamp(camX, 0, Math.max(0, worldW() - W));
+    camY = clamp(camY, 0, Math.max(0, worldH() - H));
+  }
   var player = { x: 50, y: 300, w: 14, h: 20, vx: 0, vy: 0, dir: 1, moving: false, walkT: 0, inv: 0 };
   var keys = {};
   var dialog = null; // {lines, idx, onDone}
@@ -3920,6 +3927,8 @@
       // the crossing to Mykonos takes your food and water; you arrive with nothing
       ['food', 'water'].forEach(function (it) { var ix = inventory.indexOf(it); if (ix !== -1) inventory.splice(ix, 1); });
     }
+    camX = clamp(player.x - W / 2, 0, Math.max(0, worldW() - W));
+    camY = clamp(player.y - H / 2, 0, Math.max(0, worldH() - H));
     introT = 2.4;
     state = 'intro';
   }
@@ -3953,20 +3962,25 @@
   }
   var SCENES = [
     {
-      name: 'THE CITY: EVENING CLASS', mood: 'city',
+      name: 'THE CITY: EVENING CLASS', mood: 'city', worldW: 1280, worldH: 360,
       sky: ['#2a1e3a', '#4a2a3a'], ground: 'street',
       intro: 'The city. Dusk. You can hear the shooting, two streets over. The evening class is starting.',
       start: { x: 50, y: 300 },
       objectives: ['REACH THE EVENING CLASS.', 'TALK TO NADIA.', 'GET PAST THE CHECKPOINT.', 'REACH THE DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
-        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
+        { x: 0, y: 40, w: 1280, h: 20 }, { x: 0, y: 330, w: 1280, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 1270, y: 40, w: 10, h: 320 },
         { x: 140, y: 40, w: 120, h: 50 }, // class building
         { x: 460, y: 40, w: 100, h: 50 }, // Nadia's building
         { x: 420, y: 60, w: 10, h: 100 }, // checkpoint wall, upper
-        { x: 420, y: 220, w: 10, h: 110 }  // checkpoint wall, lower (gap y 160-220)
+        { x: 420, y: 220, w: 10, h: 110 },  // checkpoint wall, lower (gap y 160-220)
+        { x: 700, y: 40, w: 120, h: 50 },
+        { x: 900, y: 40, w: 100, h: 50 },
+        { x: 1050, y: 40, w: 120, h: 50 },
+        { x: 800, y: 60, w: 10, h: 100 },
+        { x: 800, y: 220, w: 10, h: 110 }
       ],
-      doors: [{ x: 590, y: 120, w: 36, h: 56, locked: function () { return step < 3; }, to: 1,
+      doors: [{ x: 1230, y: 120, w: 36, h: 56, locked: function () { return step < 3; }, to: 1,
         news: 'TODAY: MORE PEOPLE ARE DISPLACED FROM THEIR HOMES THAN AT ANY POINT IN RECORDED HISTORY.' }],
       npcs: [
         { id: 'nadia', x: 200, y: 120, sprite: 'nadia', name: 'NADIA', done: false,
@@ -3997,36 +4011,51 @@
                 } }
               ]);
             });
+          } },
+        { id: 'shopkeeper', x: 750, y: 280, sprite: 'worker', name: 'A SHOPKEEPER', done: false,
+          interact: function () {
+            startDialogue(["Bread's gone. Sold out by noon. People are stocking up, like it's the end of the world. ... Maybe it is. Take this, on the house. You look like you need it."]);
+          } },
+        { id: 'student', x: 950, y: 150, sprite: 'migrant', name: 'A STUDENT', done: false,
+          interact: function () {
+            startDialogue(["You're going to the class? ... My brother stopped going. He says what's the point, the world's ending anyway. But I still go. Somebody has to."]);
           } }
       ],
       items: [],
       memories: [
         { id: 'm1', x: 150, y: 150, taken: false, text: 'The evening class. Thirty of us, squeezed into a room that smelled like chalk and old tea. Nadia sat by the window in her black robe. She was the only one who never looked at her phone.' },
-        { id: 'm2', x: 520, y: 280, taken: false, text: 'The walk home. Nadia said, if anyone stops us, let me do the talking. She said it like she\'d done it before. She had.' }
+        { id: 'm2', x: 520, y: 280, taken: false, text: 'The walk home. Nadia said, if anyone stops us, let me do the talking. She said it like she\'d done it before. She had.' },
+        { id: 'm3', x: 750, y: 150, taken: false, text: 'The market. The stalls were still open, but nobody was buying. A man was selling bread by candlelight. He said, take it, pay me later. Nobody pays later anymore.' },
+        { id: 'm4', x: 1100, y: 280, taken: false, text: 'The corner. Nadia stopped here once, to tie her shoe, and a soldier walked past without looking at us. She said, see? They do not see us if we do not look scared.' }
       ],
       patrols: [
         P(420, 150, [{ x: 420, y: 150 }, { x: 420, y: 230 }], { speed: 0.8, detect: 55, chase: 1.25 }, 'soldier'),
         P(480, 150, [{ x: 480, y: 150 }, { x: 540, y: 150 }, { x: 540, y: 260 }, { x: 480, y: 260 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier'),
-        P(300, 100, [{ x: 300, y: 100 }, { x: 500, y: 100 }], { speed: 0.9, detect: 55, chase: 1.25 }, 'soldier')
+        P(300, 100, [{ x: 300, y: 100 }, { x: 500, y: 100 }], { speed: 0.9, detect: 55, chase: 1.25 }, 'soldier'),
+        P(800, 150, [{ x: 800, y: 150 }, { x: 800, y: 230 }], { speed: 0.9, detect: 55, chase: 1.25 }, 'soldier'),
+        P(1000, 100, [{ x: 1000, y: 100 }, { x: 1150, y: 100 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier')
       ],
-      rests: [{ x: 70, y: 200, used: false, label: 'REST ON THE STOOP' }],
-      stars: [{ x: 600, y: 300, taken: false }]
+      rests: [{ x: 70, y: 200, used: false, label: 'REST ON THE STOOP' }, { x: 1050, y: 200, used: false, label: 'REST BY THE MARKET' }],
+      stars: [{ x: 1150, y: 80, taken: false }]
     },
     {
-      name: 'THE CITY: THE FALL', mood: 'fall',
+      name: 'THE CITY: THE FALL', mood: 'fall', worldW: 1280, worldH: 360,
       sky: ['#0d0d1a', '#1a1a2a'], ground: 'street',
       intro: 'The city. Night. The power is out. The soldiers are everywhere. Nadia says: we have to go. Tonight.',
       start: { x: 50, y: 300 },
       objectives: ['FIND FOOD AND WATER.', 'GET PAST THE CURFEW.', 'REACH THE DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
-        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
+        { x: 0, y: 40, w: 1280, h: 20 }, { x: 0, y: 330, w: 1280, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 1270, y: 40, w: 10, h: 320 },
         { x: 140, y: 40, w: 100, h: 60 }, // ruined building
         { x: 460, y: 260, w: 120, h: 50 }, // barricade
         { x: 320, y: 60, w: 10, h: 100 }, // curfew wall, upper
-        { x: 320, y: 220, w: 10, h: 110 }  // curfew wall, lower (gap y 160-220)
+        { x: 320, y: 220, w: 10, h: 110 },  // curfew wall, lower (gap y 160-220)
+        { x: 700, y: 40, w: 120, h: 50 },
+        { x: 950, y: 40, w: 100, h: 50 },
+        { x: 1100, y: 40, w: 120, h: 50 }
       ],
-      doors: [{ x: 590, y: 120, w: 36, h: 56, locked: function () { return !(has('food') && has('water')); }, to: 2,
+      doors: [{ x: 1230, y: 120, w: 36, h: 56, locked: function () { return !(has('food') && has('water')); }, to: 2,
         news: 'TODAY: IN MANY CITIES, CURFEWS AND CHECKPOINTS DECIDE WHO MAY WALK THE STREETS AFTER DARK.' }],
       npcs: [
         { id: 'nadia', x: 200, y: 120, sprite: 'nadia', name: 'NADIA', done: false,
@@ -4050,6 +4079,10 @@
                 } }
               ]);
             });
+          } },
+        { id: 'neighbor2', x: 850, y: 250, sprite: 'local', name: 'A NEIGHBOR', done: false,
+          interact: function () {
+            startDialogue(["Curfew's at nine. They shoot first and ask later, after dark. ... You're leaving? Then go, and don't look back. Looking back is how they catch you."]);
           } }
       ],
       items: [
@@ -4058,27 +4091,33 @@
       ],
       memories: [
         { id: 'm1', x: 300, y: 200, taken: false, text: 'The city at night. No lights. The only sound is the soldiers\' boots, and somewhere, a woman singing to her child so she won\'t be afraid.' },
-        { id: 'm2', x: 500, y: 280, taken: false, text: 'Saeed\'s father stayed. He said someone had to look after the house. Saeed didn\'t argue. He just hugged him, and then he left, and he didn\'t look back.' }
+        { id: 'm2', x: 500, y: 280, taken: false, text: 'Saeed\'s father stayed. He said someone had to look after the house. Saeed didn\'t argue. He just hugged him, and then he left, and he didn\'t look back.' },
+        { id: 'm3', x: 900, y: 150, taken: false, text: 'The dark. The whole street went dark at once, and for a second nobody moved. Then someone lit a candle, and then another, and the street was full of little lights.' }
       ],
       patrols: [
         P(320, 150, [{ x: 320, y: 150 }, { x: 320, y: 230 }], { speed: 0.8, detect: 55, chase: 1.25 }, 'soldier'),
-        P(480, 120, [{ x: 480, y: 120 }, { x: 480, y: 300 }, { x: 560, y: 300 }, { x: 560, y: 120 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier')
+        P(480, 120, [{ x: 480, y: 120 }, { x: 480, y: 300 }, { x: 560, y: 300 }, { x: 560, y: 120 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier'),
+        P(850, 150, [{ x: 850, y: 150 }, { x: 850, y: 230 }], { speed: 0.9, detect: 55, chase: 1.25 }, 'soldier'),
+        P(1100, 100, [{ x: 1100, y: 100 }, { x: 1100, y: 300 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'soldier')
       ],
-      rests: [{ x: 70, y: 200, used: false, label: 'REST IN THE DOORWAY' }],
-      stars: [{ x: 60, y: 100, taken: false }]
+      rests: [{ x: 70, y: 200, used: false, label: 'REST IN THE DOORWAY' }, { x: 1000, y: 200, used: false, label: 'REST IN THE SHADOWS' }],
+      stars: [{ x: 1150, y: 300, taken: false }]
     },
     {
-      name: 'MYKONOS: A CAMP', mood: 'mykonos',
+      name: 'MYKONOS: A CAMP', mood: 'mykonos', worldW: 1280, worldH: 360,
       sky: ['#1a2a4a', '#2a4a6a'], ground: 'sand',
       intro: 'Mykonos. A camp by the sea. Hundreds of people, waiting for a door.',
       start: { x: 50, y: 300 },
       objectives: ['FIND A BLANKET.', 'FIND FOOD AND WATER.', 'HELP SOMEONE, OR KEEP MOVING.', 'REACH THE DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
-        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
-        { x: 200, y: 180, w: 60, h: 40 }, { x: 400, y: 120, w: 60, h: 40 } // tents (blocks)
+        { x: 0, y: 40, w: 1280, h: 20 }, { x: 0, y: 330, w: 1280, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 1270, y: 40, w: 10, h: 320 },
+        { x: 200, y: 180, w: 60, h: 40 }, { x: 400, y: 120, w: 60, h: 40 }, // tents (blocks)
+        { x: 700, y: 40, w: 100, h: 50 },
+        { x: 900, y: 40, w: 100, h: 50 },
+        { x: 1100, y: 40, w: 100, h: 50 }
       ],
-      doors: [{ x: 590, y: 140, w: 36, h: 56, locked: function () { return !(has('blanket') && has('water') && (has('food') || flags.migrantHelped)); }, to: 3,
+      doors: [{ x: 1230, y: 140, w: 36, h: 56, locked: function () { return !(has('blanket') && has('water') && (has('food') || flags.migrantHelped)); }, to: 3,
         news: 'TODAY: REFUGEE CAMPS GROW, WHILE WAITS FOR ASYLUM STRETCH INTO YEARS.' }],
       npcs: [
         { id: 'nadia', x: 350, y: 200, sprite: 'nadia', name: 'NADIA', done: false,
@@ -4110,6 +4149,14 @@
                 } }
               ]);
             });
+          } },
+        { id: 'migrant2', x: 850, y: 250, sprite: 'migrant', name: 'A FELLOW MIGRANT', done: false,
+          interact: function () {
+            startDialogue(["I have been here three months. Three months, waiting for a paper that says I exist. ... You just got here? Then you still have hope. Hold on to it. It is the only thing they cannot take."]);
+          } },
+        { id: 'campchild', x: 1050, y: 200, sprite: 'migrant', name: 'A CHILD', done: false,
+          interact: function () {
+            startDialogue(["Have you seen the sea? It is so big. My mother says on the other side there is a place where nobody is scared. I want to go there."]);
           } }
       ],
       items: [
@@ -4119,39 +4166,40 @@
       ],
       memories: [
         { id: 'm1', x: 100, y: 120, taken: false, text: 'The boats come in the morning. People climb out soaking wet and someone hands them a blanket, like that\'s the whole story. It isn\'t.' },
-        { id: 'm2', x: 540, y: 300, taken: false, text: 'Nobody lives here. We just wait here. Days turn into weeks. Someone\'s always leaving, and someone\'s always arriving, and the camp just stays.' }
+        { id: 'm2', x: 540, y: 300, taken: false, text: 'Nobody lives here. We just wait here. Days turn into weeks. Someone\'s always leaving, and someone\'s always arriving, and the camp just stays.' },
+        { id: 'm3', x: 1000, y: 150, taken: false, text: 'The boats. Another one came in this morning. The people on it were so quiet. They had been on the water all night, and the sea had taken everything they had.' }
       ],
       patrols: [
         P(150, 240, [{ x: 150, y: 240 }, { x: 500, y: 240 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'guard'),
         P(350, 120, [{ x: 350, y: 120 }, { x: 350, y: 300 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'guard'),
-        P(500, 300, [{ x: 500, y: 300 }, { x: 200, y: 300 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'guard')
+        P(500, 300, [{ x: 500, y: 300 }, { x: 200, y: 300 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'guard'),
+        P(900, 150, [{ x: 900, y: 150 }, { x: 900, y: 280 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'guard')
       ],
-      rests: [{ x: 100, y: 300, used: false, label: 'REST IN THE TENT' }],
-      stars: [{ x: 600, y: 60, taken: false }]
+      rests: [{ x: 100, y: 300, used: false, label: 'REST IN THE TENT' }, { x: 1100, y: 280, used: false, label: 'REST BY THE FENCE' }],
+      stars: [{ x: 1150, y: 80, taken: false }]
     },
     {
-      name: 'LONDON: A SHARED HOUSE', mood: 'london',
+      name: 'LONDON: A SHARED HOUSE', mood: 'london', worldW: 1600, worldH: 720,
       sky: ['#1a1a2a', '#3a2a3a'], ground: 'house',
       intro: 'London. A house full of strangers who are not strangers.',
       start: { x: 60, y: 280 },
-      objectives: ['TALK TO YOUR HOUSEMATE.', 'SHARE SOMETHING, OR SNEAK PAST.', 'REACH THE DOOR.'],
+      objectives: ['TALK TO YOUR HOUSEMATE.', 'SHARE SOMETHING, OR SNEAK PAST.', 'REACH THE BACK DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
-        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 },
-        { x: 10, y: 40, w: 240, h: 10 }, // house top wall
-        { x: 10, y: 310, w: 240, h: 10 }, // house bottom wall
-        { x: 10, y: 40, w: 10, h: 280 }, // house left wall
-        { x: 240, y: 40, w: 10, h: 220 }, // house right wall, upper (gap y 260-310 = back door)
-        { x: 240, y: 310, w: 10, h: 10 }
+        { x: 0, y: 40, w: 1600, h: 20 }, { x: 0, y: 690, w: 1600, h: 30 },
+        { x: 0, y: 40, w: 10, h: 680 }, { x: 1590, y: 40, w: 10, h: 680 },
+        { x: 400, y: 40, w: 10, h: 160 }, { x: 400, y: 260, w: 10, h: 100 },
+        { x: 800, y: 40, w: 10, h: 160 }, { x: 800, y: 260, w: 10, h: 100 },
+        { x: 1200, y: 40, w: 10, h: 160 }, { x: 1200, y: 260, w: 10, h: 100 },
+        { x: 10, y: 360, w: 1390, h: 10 }, { x: 1460, y: 360, w: 130, h: 10 }
       ],
-      doors: [{ x: 590, y: 150, w: 36, h: 56, locked: function () { return step < 1; }, to: 4,
+      doors: [{ x: 1550, y: 500, w: 36, h: 56, locked: function () { return step < 1; }, to: 4,
         news: 'TODAY: IN MANY COUNTRIES, LEADERS PROMISE TO "TAKE BACK" STREETS AND BORDERS FROM NEWCOMERS.' }],
       npcs: [
         { id: 'nadia', x: 200, y: 250, sprite: 'nadia', name: 'NADIA', done: false,
           interact: function () {
             startDialogue(["Twelve people, one bathroom. But it's ours, for now. ... Do you ever think about what we'll do after? When this is over?"]);
           } },
-        { id: 'child', x: 100, y: 120, sprite: 'migrant', name: 'A CHILD', done: false,
+        { id: 'child', x: 950, y: 200, sprite: 'migrant', name: 'A CHILD', done: false,
           interact: function () {
             if (this.done) { startDialogue(["Thank you for staying. I'm not scared anymore."]); return; }
             var self = this;
@@ -4159,7 +4207,7 @@
               showChoice('STAY WITH THE CHILD?', [
                 { label: 'STAY WITH THEM', onPick: function () {
                   belonging = clamp(belonging + 10, 0, 100); gainHope(1); self.done = true;
-                  AudioSys.sfx('hope'); burst(100, 120, '#ffd76a', 10);
+                  AudioSys.sfx('hope'); burst(950, 200, '#ffd76a', 10);
                   startDialogue(["Thank you. ... It's quieter now. You're nice."]);
                 } },
                 { label: 'KEEP MOVING', onPick: function () {
@@ -4194,30 +4242,42 @@
               flags.housemateMet = true;
               showChoice('SHARE SOMETHING?', opts);
             });
+          } },
+        { id: 'cook', x: 600, y: 200, sprite: 'worker', name: 'THE COOK', done: false,
+          interact: function () {
+            startDialogue(["I'm making soup. Twelve people, one pot. It never stretches far enough. ... If you have food to spare, put it in the pot. If not, have a bowl anyway. Nobody goes hungry in this house."]);
+          } },
+        { id: 'neighbor', x: 1350, y: 200, sprite: 'local', name: 'A NEIGHBOR', done: false,
+          interact: function () {
+            startDialogue(["I sleep in the back bedroom. The shouting wakes me up most nights. ... But you know what? The house is quiet now. For the first time in weeks. Maybe that's something."]);
           } }
       ],
       items: [],
       memories: [
-        { id: 'm1', x: 120, y: 90, taken: false, text: 'The house smells like cooking and damp. Twelve people, one bathroom. Someone\'s always singing in the kitchen. It\'s the closest thing to home since the city.' }
+        { id: 'm1', x: 120, y: 90, taken: false, text: 'The house smells like cooking and damp. Twelve people, one bathroom. Someone is always singing in the kitchen. It is the closest thing to home since the city.' },
+        { id: 'm2', x: 600, y: 90, taken: false, text: 'The kitchen. A pot of soup on the stove, and twelve bowls lined up on the counter. The cook says nobody goes hungry in this house. She means it.' },
+        { id: 'm3', x: 1000, y: 90, taken: false, text: 'The living room. A child is hiding under a blanket, listening to the shouting outside. Someone put a drawing on the wall: a house, with a sun over it. It says HOME, in crooked letters.' },
+        { id: 'm4', x: 1400, y: 90, taken: false, text: 'The back bedroom. A mattress on the floor, a suitcase that is still packed. Nobody unpacks. Unpacking means you think you are staying. Nobody is sure they are staying.' }
       ],
       patrols: [
-        P(450, 90, [{ x: 450, y: 90 }, { x: 450, y: 320 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'nativist'),
-        P(300, 200, [{ x: 300, y: 200 }, { x: 580, y: 200 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'nativist')
+        P(400, 500, [{ x: 400, y: 500 }, { x: 800, y: 500 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'nativist'),
+        P(900, 550, [{ x: 900, y: 550 }, { x: 1300, y: 550 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'nativist'),
+        P(1400, 450, [{ x: 1400, y: 450 }, { x: 1400, y: 650 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'nativist')
       ],
-      rests: [{ x: 60, y: 280, used: false, label: 'REST ON THE BED' }],
-      stars: [{ x: 40, y: 60, taken: false }],      flyer: { x: 300, y: 80 }
+      rests: [{ x: 1350, y: 280, used: false, label: 'REST ON THE BED' }, { x: 950, y: 280, used: false, label: 'REST IN THE ARMCHAIR' }],
+      stars: [{ x: 100, y: 600, taken: false }],      flyer: { x: 900, y: 80 }
     },
     {
-      name: 'LONDON: THE MARCH', mood: 'march',
+      name: 'LONDON: THE MARCH', mood: 'march', worldW: 1600, worldH: 360,
       sky: ['#2a1a1a', '#4a2a1a'], ground: 'street',
       intro: 'London. They\'re marching. Hundreds of them. GO HOME, they shout. You have to get through.',
       start: { x: 50, y: 300 },
       objectives: ['GET THROUGH THE MARCH.', 'REACH THE DOOR.'],
       walls: [
-        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
-        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 }
+        { x: 0, y: 40, w: 1600, h: 20 }, { x: 0, y: 330, w: 1600, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 1590, y: 40, w: 10, h: 320 }
       ],
-      doors: [{ x: 590, y: 80, w: 36, h: 56, locked: function () { return step < 1; }, to: 5,
+      doors: [{ x: 1550, y: 80, w: 36, h: 56, locked: function () { return step < 1; }, to: 5,
         news: 'TODAY: THE SAME WORDS ARE ON THE NEWS, IN EVERY COUNTRY, RIGHT NOW.' }],
       npcs: [
         { id: 'nadia', x: 150, y: 280, sprite: 'nadia', name: 'NADIA', done: false,
@@ -4245,10 +4305,13 @@
       ],
       items: [],
       memories: [
-        { id: 'm1', x: 320, y: 200, taken: false, text: 'They march like it\'s a parade. Banners, drums, the whole thing. And the chant is always the same. You learn not to flinch when you hear it. You never really learn.' }
+        { id: 'm1', x: 320, y: 200, taken: false, text: 'They march like it\'s a parade. Banners, drums, the whole thing. And the chant is always the same. You learn not to flinch when you hear it. You never really learn.' },
+        { id: 'm2', x: 1000, y: 150, taken: false, text: 'The crowd. Hundreds of them, and they all looked the same: angry, and scared, and certain. Nadia squeezed my hand and said, do not stop. Do not stop for anything.' }
       ],
       patrols: [
-        P(540, 120, [{ x: 540, y: 120 }, { x: 540, y: 200 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'nativist')
+        P(540, 120, [{ x: 540, y: 120 }, { x: 540, y: 200 }], { speed: 1.0, detect: 55, chase: 1.25 }, 'nativist'),
+        P(900, 150, [{ x: 900, y: 150 }, { x: 900, y: 300 }], { speed: 1.0, detect: 55, chase: 1.2 }, 'nativist'),
+        P(1300, 200, [{ x: 1300, y: 200 }, { x: 1500, y: 200 }], { speed: 0.9, detect: 55, chase: 1.2 }, 'nativist')
       ],
       marchers: [
         { startX: 100, y: 120, speed: 55, sprite: 'nativist', x: 100 },
@@ -4259,21 +4322,27 @@
         { startX: 200, y: 200, speed: 55, sprite: 'nativist', x: 200 },
         { startX: 550, y: 200, speed: 68, sprite: 'nativist', x: 550 },
         { startX: 80, y: 280, speed: 70, sprite: 'nativist', x: 80 },
-        { startX: 350, y: 280, speed: 58, sprite: 'nativist', x: 350 },
-        { startX: 550, y: 280, speed: 62, sprite: 'nativist', x: 550 }
+{ startX: 350, y: 280, speed: 58, sprite: 'nativist', x: 350 },
+        { startX: 550, y: 280, speed: 62, sprite: 'nativist', x: 550 },
+        { startX: 750, y: 200, speed: 66, sprite: 'nativist', x: 750 },
+        { startX: 950, y: 280, speed: 60, sprite: 'nativist', x: 950 },
+        { startX: 1150, y: 200, speed: 68, sprite: 'nativist', x: 1150 },
+        { startX: 1350, y: 280, speed: 64, sprite: 'nativist', x: 1350 },
+        { startX: 750, y: 280, speed: 56, sprite: 'nativist', x: 750 },
+        { startX: 1150, y: 280, speed: 62, sprite: 'nativist', x: 1150 }
       ],
-      rests: [],
-      stars: [{ x: 60, y: 60, taken: false }]
+      rests: [{ x: 1200, y: 300, used: false, label: 'REST IN THE ALLEY' }],
+      stars: [{ x: 1500, y: 80, taken: false }]
     },
     {
-      name: 'MARIN, CALIFORNIA', mood: 'marin',
+      name: 'MARIN, CALIFORNIA', mood: 'marin', worldW: 1280, worldH: 360,
       sky: ['#2a4a3a', '#5a8a5a'], ground: 'grass',
       intro: 'Marin, California. Quiet. Green. Far from everything.',
       start: { x: 60, y: 300 },
       objectives: ['TALK TO THE LOCAL.', 'CHOOSE WHAT TO CARRY.'],
       walls: [
-        { x: 0, y: 40, w: 640, h: 20 }, { x: 0, y: 330, w: 640, h: 30 },
-        { x: 0, y: 40, w: 10, h: 320 }, { x: 630, y: 40, w: 10, h: 320 }
+        { x: 0, y: 40, w: 1280, h: 20 }, { x: 0, y: 330, w: 1280, h: 30 },
+        { x: 0, y: 40, w: 10, h: 320 }, { x: 1270, y: 40, w: 10, h: 320 }
       ],
       doors: [],
       npcs: [
@@ -4290,20 +4359,27 @@
               advanceStep();
               showFinalChoice();
             });
+          } },
+        { id: 'marinlocal', x: 900, y: 250, sprite: 'local', name: 'A LOCAL', done: false,
+          interact: function () {
+            startDialogue(["Nice morning, isn't it? ... You look like you've come a long way. Well. You're here now. That's what matters."]);
           } }
       ],
       items: [],
       memories: [
-        { id: 'm1', x: 480, y: 140, taken: false, text: 'Marin. The air smells like eucalyptus and salt. Saeed and Nadia made it here, and then they drifted apart, slowly, like two boats. That\'s in the book too. The door didn\'t fix everything. It just moved them.' }
+        { id: 'm1', x: 480, y: 140, taken: false, text: 'Marin. The air smells like eucalyptus and salt. Saeed and Nadia made it here, and then they drifted apart, slowly, like two boats. That\'s in the book too. The door didn\'t fix everything. It just moved them.' },
+        { id: 'm2', x: 1000, y: 150, taken: false, text: 'Marin. The air smells like eucalyptus and salt. Saeed and Nadia made it here, and then they drifted apart, slowly, like two boats. That is in the book too. The door did not fix everything. It just moved them.' }
       ],
       patrols: [],
-      rests: [{ x: 120, y: 260, used: false, label: 'REST UNDER THE TREE' }],
-      stars: [{ x: 600, y: 300, taken: false }]
+      rests: [{ x: 120, y: 260, used: false, label: 'REST UNDER THE TREE' }, { x: 1100, y: 260, used: false, label: 'REST ON THE HILL' }],
+      stars: [{ x: 1150, y: 300, taken: false }]
     }
   ];
   function londonStandDown() {
-    var p = SCENES[3].patrols[0];
-    if (p) { p.wps = [{ x: 300, y: 320 }]; p.wp = 0; p.mode = 'patrol'; p.def.speed = 0.6; }
+    var s3 = SCENES[3];
+    var p0 = s3.patrols[0], p1 = s3.patrols[1];
+    if (p0) { p0.wps = [{ x: 100, y: 650 }]; p0.wp = 0; p0.mode = 'patrol'; p0.def.speed = 0.6; }
+    if (p1) { p1.wps = [{ x: 200, y: 600 }]; p1.wp = 0; p1.mode = 'patrol'; p1.def.speed = 0.6; }
   }
   function showFinalChoice() {
     var opts = [];
@@ -4448,6 +4524,12 @@
     if (best) nearTarget = best;
     // door travel is triggered by Enter, not proximity alone (handled in keydown)
     checkObjectives();
+    // camera follows the player
+    var tx = clamp(player.x - W / 2, 0, Math.max(0, worldW() - W));
+    var ty = clamp(player.y - H / 2, 0, Math.max(0, worldH() - H));
+    camX += (tx - camX) * 0.12;
+    camY += (ty - camY) * 0.12;
+    clampCam();
     // hidden stars: walk over one to collect it
     (s.stars || []).forEach(function (st) {
       if (!st.taken && dist(player.x, player.y, st.x, st.y) < 18) {
@@ -4559,17 +4641,17 @@
     var kind = s.mood;
     var r = Math.random();
     if (kind === 'city') {
-      if (r < 0.35) particles.push({ x: 20 + Math.random() * 600, y: 40, vx: -8, vy: 90 + Math.random() * 40, life: 3, color: '#7fb3e8', size: 1 });
+      if (r < 0.35) particles.push({ x: camX + 20 + Math.random() * 600, y: camY + 40, vx: -8, vy: 90 + Math.random() * 40, life: 3, color: '#7fb3e8', size: 1 });
     } else if (kind === 'fall') {
-      if (r < 0.25) particles.push({ x: 20 + Math.random() * 600, y: 320, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20, life: 4, color: '#ff9a3c', size: 2 });
+      if (r < 0.25) particles.push({ x: camX + 20 + Math.random() * 600, y: camY + 320, vx: (Math.random() - 0.5) * 12, vy: -25 - Math.random() * 20, life: 4, color: '#ff9a3c', size: 2 });
     } else if (kind === 'mykonos') {
-      if (r < 0.2) particles.push({ x: 20 + Math.random() * 600, y: 40 + Math.random() * 60, vx: 15 + Math.random() * 15, vy: 6, life: 5, color: '#cfe8ff', size: 1 });
+      if (r < 0.2) particles.push({ x: camX + 20 + Math.random() * 600, y: camY + 40 + Math.random() * 60, vx: 15 + Math.random() * 15, vy: 6, life: 5, color: '#cfe8ff', size: 1 });
     } else if (kind === 'london') {
-      if (r < 0.12) particles.push({ x: 20 + Math.random() * 600, y: 50 + Math.random() * 250, vx: (Math.random() - 0.5) * 6, vy: -4, life: 6, color: '#d8c8a0', size: 1 });
+      if (r < 0.12) particles.push({ x: camX + 20 + Math.random() * 600, y: camY + 50 + Math.random() * 250, vx: (Math.random() - 0.5) * 6, vy: -4, life: 6, color: '#d8c8a0', size: 1 });
     } else if (kind === 'march') {
-      if (r < 0.3) particles.push({ x: 20 + Math.random() * 600, y: 320, vx: (Math.random() - 0.5) * 10, vy: -30 - Math.random() * 25, life: 3.5, color: '#ff7a3c', size: 2 });
+      if (r < 0.3) particles.push({ x: camX + 20 + Math.random() * 600, y: camY + 320, vx: (Math.random() - 0.5) * 10, vy: -30 - Math.random() * 25, life: 3.5, color: '#ff7a3c', size: 2 });
     } else if (kind === 'marin') {
-      if (r < 0.18) particles.push({ x: 20 + Math.random() * 600, y: 60 + Math.random() * 240, vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 10, life: 5, color: '#b8ff9a', size: 2 });
+      if (r < 0.18) particles.push({ x: camX + 20 + Math.random() * 600, y: camY + 60 + Math.random() * 240, vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 10, life: 5, color: '#b8ff9a', size: 2 });
     }
     if (particles.length > 220) particles.splice(0, particles.length - 220);
   }
@@ -4577,7 +4659,7 @@
     for (var i = particles.length - 1; i >= 0; i--) {
       var p = particles[i];
       p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
-      if (p.life <= 0 || p.y < 30 || p.y > 360 || p.x < 0 || p.x > 640) particles.splice(i, 1);
+      if (p.life <= 0 || p.y < camY - 10 || p.y > camY + H + 10 || p.x < camX - 10 || p.x > camX + W + 10) particles.splice(i, 1);
     }
   }
   function drawParticles(t) {
@@ -4619,18 +4701,24 @@
   }
   function drawScene(t) {
     var s = SCENES[sceneIndex];
-    // sky
+    var WW = worldW(), WH = worldH();
+    // sky (screen coords, fixed)
+    ctx.save();
     var g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, s.sky[0]); g.addColorStop(1, s.sky[1]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     // ground
-    if (s.ground === 'street') drawStreet(0, 60, W, 270);
-    else if (s.ground === 'sand') drawSand(0, 60, W, 270);
-    else if (s.ground === 'grass') drawGrass(0, 60, W, 270);
-    else if (s.ground === 'house') { drawWoodFloor(0, 60, W, 270); drawStreet(250, 60, W - 250, 270); }
+    if (s.ground === 'street') drawStreet(0, 60, WW, WH - 60);
+    else if (s.ground === 'sand') drawSand(0, 60, WW, WH - 60);
+    else if (s.ground === 'grass') drawGrass(0, 60, WW, WH - 60);
+    else if (s.ground === 'house') { drawWoodFloor(0, 60, WW, WH - 60); }
+    ctx.restore();
+    // ---- world (camera) ----
+    ctx.save();
+    ctx.translate(-Math.round(camX), -Math.round(camY));
     // walls (brick for buildings, dark for boundaries)
     s.walls.forEach(function (r) {
-      if (r.w === 640 || r.h === 320 || r.x === 0 || r.x === 630) {
+      if (r.x === 0 || r.y === 40 || r.x + r.w === WW || r.y + r.h === WH) {
         ctx.fillStyle = '#1a1f2a'; ctx.fillRect(r.x, r.y, r.w, r.h);
       } else if (s.ground === 'house' && r.x >= 10 && r.x <= 250) {
         drawBrickWall(r.x, r.y, r.w, r.h);
@@ -4648,35 +4736,68 @@
       // a lamp glow
       ctx.fillStyle = 'rgba(255,215,106,0.12)';
       ctx.fillRect(180, 60, 40, 90);
+      // a second street sign, far down the road
+      ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText('OLD MARKET', 1150, 52);
+      ctx.textAlign = 'left';
     } else if (sceneIndex === 1) {
+      // curfew sign
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(700, 60, 90, 14);
+      ctx.fillStyle = '#e8ecf3'; ctx.font = '7px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText('CURFEW 9 PM', 745, 70);
+      ctx.textAlign = 'left';
+      // dark windows, a few lit
+      ctx.fillStyle = '#ffd76a';
+      ctx.fillRect(720, 50, 8, 8); ctx.fillRect(980, 50, 8, 8);
+    } else if (sceneIndex === 2) {
       // tents (drawn over the wall blocks)
       if (SPRITES.tent) {
         drawSprite('tent', 0, 196, 168);
         drawSprite('tent', 0, 396, 108);
+        drawSprite('tent', 0, 760, 168);
+        drawSprite('tent', 0, 1060, 108);
       }
       // sea at the top
-      ctx.fillStyle = '#2a5a8a'; ctx.fillRect(0, 40, W, 20);
+      ctx.fillStyle = '#2a5a8a'; ctx.fillRect(0, 40, WW, 20);
       ctx.fillStyle = '#7fb3e8';
-      for (var i = 0; i < 12; i++) ctx.fillRect((i * 53 + (t / 40) % 53) % 640, 48 + (i % 2) * 6, 20, 2);
-    } else if (sceneIndex === 2) {
-      // flyer
-      ctx.fillStyle = '#e8ecf3'; ctx.fillRect(292, 66, 16, 22);
-      ctx.fillStyle = '#c0392b'; ctx.fillRect(294, 70, 12, 3); ctx.fillRect(294, 76, 12, 3);
-      // bed
-      if (SPRITES.bed) drawSprite('bed', 0, 48, 272);
-      // house roofline
-      ctx.fillStyle = '#4a2a2a'; ctx.fillRect(10, 40, 240, 8);
+      for (var i = 0; i < 24; i++) ctx.fillRect((i * 53 + (t / 40) % 53) % 1280, 48 + (i % 2) * 6, 20, 2);
     } else if (sceneIndex === 3) {
+      // the mansion: room labels
+      ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
+      ctx.fillText('ENTRANCE HALL', 205, 52);
+      ctx.fillText('KITCHEN', 605, 52);
+      ctx.fillText('LIVING ROOM', 1005, 52);
+      ctx.fillText('BEDROOMS', 1405, 52);
+      ctx.fillText('BACK GARDEN', 800, 372);
+      ctx.textAlign = 'left';
+      // flyer on the living room wall
+      ctx.fillStyle = '#e8ecf3'; ctx.fillRect(892, 66, 16, 22);
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(894, 70, 12, 3); ctx.fillRect(894, 76, 12, 3);
+      // beds in the bedrooms
+      if (SPRITES.bed) { drawSprite('bed', 0, 1300, 272); drawSprite('bed', 0, 1450, 272); }
+      // a rug in the living room
+      ctx.fillStyle = '#7a2a2a'; ctx.fillRect(900, 240, 120, 40);
+      // stairs (the gap in the floor wall)
+      ctx.fillStyle = '#8a6a4a';
+      for (var si = 0; si < 4; si++) ctx.fillRect(1400 + si * 2, 360 + si * 4, 60 - si * 4, 4);
+    } else if (sceneIndex === 4) {
       // banners in the march
       ctx.fillStyle = '#c0392b'; ctx.fillRect(120, 60, 60, 14);
       ctx.fillStyle = '#e8ecf3'; ctx.font = '7px ' + FONT; ctx.textAlign = 'center';
       ctx.fillText('GO HOME', 150, 70);
       ctx.textAlign = 'left';
-    } else if (sceneIndex === 4) {
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(900, 60, 60, 14);
+      ctx.fillStyle = '#e8ecf3'; ctx.fillText('GO HOME', 930, 70);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(1400, 60, 60, 14);
+      ctx.fillStyle = '#e8ecf3'; ctx.fillText('GO HOME', 1430, 70);
+      ctx.textAlign = 'left';
+    } else if (sceneIndex === 5) {
       if (SPRITES.house) drawSprite('house', 0, 460, 100);
-      if (SPRITES.tree) { drawSprite('tree', 0, 100, 220); drawSprite('tree', 0, 540, 240); }
+      if (SPRITES.tree) { drawSprite('tree', 0, 100, 220); drawSprite('tree', 0, 540, 240); drawSprite('tree', 0, 900, 200); drawSprite('tree', 0, 1150, 240); }
       // a path
       fillTextured(60, 300, 520, 30, '#b8a888', '#a89878', '#c8b898', 6);
+      fillTextured(600, 300, 520, 30, '#b8a888', '#a89878', '#c8b898', 6);
     }
     // doors
     s.doors.forEach(function (d) { drawDoorSprite(d, t); });
@@ -4747,15 +4868,18 @@
     });
     ctx.globalAlpha = 1;
     drawParticles(t);
-    // objective + HUD
+    ctx.restore();
+    // objective + HUD (screen coords)
+    ctx.save();
+    ctx.restore();
     drawHUD();
     // prompt
     if (nearTarget && state === 'play') {
-      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillStyle = 'rgba(0,0,0,0.88)';
       var pw = ctx.measureText(nearTarget.label).width + 20;
       ctx.fillRect(W / 2 - pw / 2, H - 44, pw, 22);
-      ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
-      ctx.fillText(nearTarget.label, W / 2, H - 30);
+      ctx.textAlign = 'center';
+      textOut(nearTarget.label, W / 2, H - 30, '#ffd76a', '9px ' + FONT);
       ctx.textAlign = 'left';
     }
     // message
@@ -4763,8 +4887,8 @@
       ctx.fillStyle = 'rgba(0,0,0,0.75)';
       var mw = ctx.measureText(msg.text).width + 20;
       ctx.fillRect(W / 2 - mw / 2, 66, mw, 22);
-      ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT; ctx.textAlign = 'center';
-      ctx.fillText(msg.text, W / 2, 80);
+      ctx.textAlign = 'center';
+      textOut(msg.text, W / 2, 80, '#e8ecf3', '9px ' + FONT);
       ctx.textAlign = 'left';
     }
   }
@@ -4778,13 +4902,20 @@
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, fw, 2);
     if (label) { ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT; ctx.fillText(label, x, y - 2); }
   }
+  function textOut(txt, x, y, color, font) {
+    ctx.font = font || ('9px ' + FONT);
+    ctx.fillStyle = '#000';
+    ctx.fillText(txt, x - 1, y); ctx.fillText(txt, x + 1, y);
+    ctx.fillText(txt, x, y - 1); ctx.fillText(txt, x, y + 1);
+    ctx.fillStyle = color;
+    ctx.fillText(txt, x, y);
+  }
   function drawHUD() {
     ctx.fillStyle = 'rgba(0,0,0,0.72)';
     ctx.fillRect(0, 0, W, 40);
     ctx.fillStyle = '#ffd76a'; ctx.fillRect(0, 40, W, 2);
     // Row 1: scene name (left), journey dots (center), hope hearts (right)
-    ctx.fillStyle = '#ffd76a'; ctx.font = '8px ' + FONT;
-    ctx.fillText(SCENES[sceneIndex].name, 8, 14);
+    textOut(SCENES[sceneIndex].name, 8, 14, '#ffd76a', '9px ' + FONT);
     var n = SCENES.length;
     var jx = 250;
     ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
@@ -4796,28 +4927,26 @@
       else { ctx.fillStyle = '#3a4a6b'; ctx.fillRect(dx, 6, 10, 12); }
     }
     var hx = W - 170;
-    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
-    ctx.fillText('HOPE', hx - 36, 14);
+    textOut('HOPE', hx - 36, 14, '#e8ecf3', '9px ' + FONT);
     for (var i = 0; i < maxHope; i++) {
       if (i < hope) drawSprite('heart', 0, hx + i * 18, 4);
       else { ctx.fillStyle = '#3a3a3a'; ctx.fillRect(hx + i * 18 + 2, 6, 12, 10); ctx.fillStyle = '#232833'; ctx.fillRect(hx + i * 18 + 4, 8, 8, 6); }
     }
     // Row 2: objective (left), stamina bar (right, label to the left of the bar)
-    ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
     var obj = SCENES[sceneIndex].objectives[step] || '';
-    ctx.fillText('GOAL: ' + obj, 8, 28);
+    textOut('GOAL: ' + obj, 8, 28, '#e8ecf3', '9px ' + FONT);
     ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
     ctx.fillText('RUN', W - 178, 27);
     drawBar(W - 150, 21, 140, stamina / 100, '#2ecc71', '');
     // Row 3: inventory (left), belonging bar (right, label to the left), memories (far right)
     var ix = 8;
-    ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
+    ctx.fillStyle = '#9fb0c3'; ctx.font = '8px ' + FONT;
     ctx.fillText('CARRYING:', ix, 38);
     var ixx = ix + 62;
     if (inventory.length === 0) { ctx.fillStyle = '#5a6a80'; ctx.fillText('NOTHING', ixx, 38); }
     else {
       inventory.forEach(function (it) {
-        ctx.fillStyle = '#e8ecf3'; ctx.font = '7px ' + FONT;
+        ctx.fillStyle = '#e8ecf3'; ctx.font = '8px ' + FONT;
         ctx.fillText(it.toUpperCase(), ixx, 38);
         ixx += ctx.measureText(it.toUpperCase()).width + 12;
       });
@@ -4849,9 +4978,9 @@
       ctx.fillStyle = '#000'; ctx.font = '8px ' + FONT;
       ctx.fillText(speaker, 60, H - 130);
     }
-    ctx.fillStyle = '#e8ecf3'; ctx.font = '9px ' + FONT;
+    ctx.fillStyle = '#e8ecf3'; ctx.font = '10px ' + FONT;
     var y = speaker ? H - 96 : H - 108;
-    lines.forEach(function (ln) { y = wrapText(ln, 56, y, W - 112, 16, false) + 8; });
+    lines.forEach(function (ln) { y = wrapText(ln, 56, y, W - 112, 18, false) + 8; });
     ctx.fillStyle = '#9fb0c3'; ctx.font = '7px ' + FONT;
     ctx.fillText('ENTER: CONTINUE', W - 150, H - 18);
     // blinking continue triangle
